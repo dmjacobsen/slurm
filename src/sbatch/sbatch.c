@@ -57,6 +57,7 @@
 #include "src/common/slurm_rlimits_info.h"
 #include "src/common/xstring.h"
 #include "src/common/xmalloc.h"
+#include "src/common/cli_filter.h"
 
 #include "src/sbatch/opt.h"
 
@@ -83,6 +84,7 @@ int main(int argc, char **argv)
 	submit_response_msg_t *resp;
 	char *script_name;
 	char *script_body;
+	char *cli_err_msg = NULL;
 	int script_size = 0;
 	int rc = 0, retries = 0;
 
@@ -169,6 +171,14 @@ int main(int argc, char **argv)
 		exit(error_exit);
 	}
 
+	/* run cli_filter pre_submit */
+	rc = cli_filter_plugin_pre_submit(CLI_SBATCH, (void *) &opt,
+		&cli_err_msg);
+	if (rc != SLURM_SUCCESS) {
+		/* TODO print out cli_err_msg */
+		exit(error_exit);
+	}
+
 	if (_check_cluster_specific_settings(&desc) != SLURM_SUCCESS)
 		exit(error_exit);
 
@@ -205,7 +215,15 @@ int main(int argc, char **argv)
 		else
 			error("%s", msg);
 		sleep (++retries);
-        }
+        } 
+
+	/* run cli_filter post_submit */
+	rc = cli_filter_plugin_post_submit(CLI_SBATCH, resp->job_id, (void *) &opt,
+		&cli_err_msg);
+	if (rc != SLURM_SUCCESS) {
+		/* TODO print out cli_err_msg */
+		exit(error_exit);
+	}
 
 	if (!opt.parsable){
 		printf("Submitted batch job %u", resp->job_id);

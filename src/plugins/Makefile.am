@@ -7,6 +7,7 @@ SUBDIRS = \
 	auth			\
 	burst_buffer		\
 	checkpoint		\
+	cli_filter		\
 	core_spec		\
 	crypto			\
 	ext_sensors		\

@@ -1,11 +1,9 @@
 /*****************************************************************************\
- *  opt.h - definitions for salloc option processing
+ *  cli_filter.h - driver for cli_filter plugin
  *****************************************************************************
- *  Copyright (C) 2002-2007 The Regents of the University of California.
- *  Copyright (C) 2008-2010 Lawrence Livermore National Security.
+ *  Copyright (C) 2010 Lawrence Livermore National Security.
  *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
- *  Written by Mark Grondona <grondona1@llnl.gov>,
- *    Christopher J. Morrone <morrone2@llnl.gov>, et. al.
+ *  Written by Morris Jette <jette1@llnl.gov>
  *  CODE-OCEC-09-009. All rights reserved.
  *
  *  This file is part of SLURM, a resource management program.
@@ -38,46 +36,57 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA.
 \*****************************************************************************/
 
-#ifndef _HAVE_OPT_H
-#define _HAVE_OPT_H
+#ifndef _CLI_FILTER_H
+#define _CLI_FILTER_H
 
-#include "config.h"
+#include "slurm/slurm.h"
 
-#include <sys/types.h>
-#include <time.h>
-#include <unistd.h>
+enum cli_types {
+	CLI_INVALID = 0,
+	CLI_SALLOC = 1,
+	CLI_SBATCH,
+	CLI_SRUN,
+	CLI_END
+};
 
-#include "src/common/env.h"
-#include "src/common/macros.h" /* true and false */
-#include "salloc_opt.h"
-
-#ifndef SYSTEM_DIMENSIONS
-#  define SYSTEM_DIMENSIONS 1
-#endif
-
-#define DEFAULT_IMMEDIATE	1
-#define DEFAULT_BELL_DELAY	10
-
-extern salloc_opt_t opt;
-extern int error_exit;		/* exit code for slurm errors */
-extern int immediate_exit;	/* exit code for --immediate option & busy */
-
-/* process options:
- * 1. set defaults
- * 2. update options with env vars
- * 3. update options with commandline args
- * 4. perform some verification that options are reasonable
+/*
+ * Initialize the cli filter plugin.
+ *
+ * Returns a SLURM errno.
  */
-int initialize_and_process_args(int argc, char **argv);
+extern int cli_filter_plugin_init(void);
 
-/* set options based upon commandline args */
-void set_options(const int argc, char **argv);
+/*
+ * Terminate the cli filter plugin. Free memory.
+ *
+ * Returns a SLURM errno.
+ */
+extern int cli_filter_plugin_fini(void);
 
-/* external functions available for SPANK plugins to modify the environment
- * exported to the SLURM Prolog and Epilog programs */
-extern char *spank_get_job_env(const char *name);
-extern int   spank_set_job_env(const char *name, const char *value,
-			       int overwrite);
-extern int   spank_unset_job_env(const char *name);
+/*
+ **************************************************************************
+ *                          P L U G I N   C A L L S                       *
+ **************************************************************************
+ */
 
-#endif	/* _HAVE_OPT_H */
+/*
+ * Perform reconfig, re-read any configuration files
+ */
+extern int cli_filter_plugin_reconfig(void);
+
+/*
+ * Execute the pre_submit() function in each cli filter plugin.
+ * If any plugin function returns anything other than SLURM_SUCCESS
+ * then stop and forward it's return value.
+ * IN cli_type - enumerated value from cli_types indicating the
+ *               cli application in-use, use to interpret opt ptr
+ * IN/OUT opt - pointer to {salloc|sbatch|srun}_opt_t data structure
+ *              (value of pointer cannot change, but OK to mutate some
+ *              of the values within the dereferenced memory)
+ * OUT err_msg - Custom error message to the user, caller to xfree results
+ */
+extern int cli_filter_plugin_pre_submit(int cli_type, void *opt, char **err_msg);
+
+extern int cli_filter_plugin_post_submit(int cli_type, uint32_t jobid, void *opt, char **err_msg);
+
+#endif /* !_CLI_FILTER_H */

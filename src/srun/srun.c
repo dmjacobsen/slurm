@@ -74,6 +74,7 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xsignal.h"
 #include "src/common/xstring.h"
+#include "src/common/cli_filter.h"
 
 #include "src/bcast/file_bcast.h"
 
@@ -143,6 +144,8 @@ int srun(int ac, char **av)
 	bool got_alloc = false;
 	slurm_step_io_fds_t cio_fds = SLURM_STEP_IO_FDS_INITIALIZER;
 	slurm_step_launch_callbacks_t step_callbacks;
+	char *cli_err_msg = NULL;
+	int rc = 0;
 
 	env->stepid = -1;
 	env->procid = -1;
@@ -165,7 +168,22 @@ int srun(int ac, char **av)
 		fatal("failed to initialize switch plugin");
 
 	init_srun(ac, av, &logopt, debug_level, 1);
+
+	/* run cli_filter pre_submit */
+	rc = cli_filter_plugin_pre_submit(CLI_SRUN, (void *) &opt,
+		&cli_err_msg);
+	if (rc != SLURM_SUCCESS) {
+		/* do something to exit */
+	}
+
 	create_srun_job(&job, &got_alloc, 0, 1);
+
+	rc = cli_filter_plugin_post_submit(CLI_SRUN, job->jobid, (void *) &opt,
+		&cli_err_msg);
+
+	if (rc != SLURM_SUCCESS) {
+		/* do something to exit */
+	}
 
 	/*
 	 *  Enhance environment for job

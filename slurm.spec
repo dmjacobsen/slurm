@@ -862,6 +862,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/slurm/job_submit_cray.so
 %{_libdir}/slurm/job_submit_require_timelimit.so
 %{_libdir}/slurm/job_submit_throttle.so
+%{_libdir}/slurm/cli_filter_defaults.so
 %{_libdir}/slurm/jobacct_gather_cgroup.so
 %{_libdir}/slurm/jobacct_gather_linux.so
 %{_libdir}/slurm/jobacct_gather_none.so
@@ -957,6 +958,7 @@ rm -rf $RPM_BUILD_ROOT
 %files lua
 %defattr(-,root,root)
 %doc contribs/lua/proctrack.lua
+%{_libdir}/slurm/cli_filter_lua.so
 %{_libdir}/slurm/job_submit_lua.so
 %{_libdir}/slurm/proctrack_lua.so
 %endif

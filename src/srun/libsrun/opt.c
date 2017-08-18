@@ -209,7 +209,7 @@ extern char **environ;
 
 /*---- global variables, defined in opt.h ----*/
 int _verbose;
-opt_t opt;
+srun_opt_t opt;
 int error_exit = 1;
 int immediate_exit = 1;
 char *mpi_type = NULL;
