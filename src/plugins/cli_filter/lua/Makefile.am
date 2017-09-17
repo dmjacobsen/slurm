@@ -6,7 +6,7 @@ CLEANFILES = core.* cli_filter_lua_gen.c
 PLUGIN_FLAGS = -module -avoid-version --export-dynamic
 
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/src/common \
-	      -DDEFAULT_SCRIPT_DIR=\"$(sysconfdir)\"
+	      -DDEFAULT_SCRIPT_DIR=\"$(sysconfdir)\" $(lua_CFLAGS)
 
 CLI_OPT_HEADERFILES = $(srcdir)/../../../sbatch/sbatch_opt.h \
 		$(srcdir)/../../../salloc/salloc_opt.h \
