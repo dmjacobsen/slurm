@@ -44,6 +44,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "slurm/slurm_errno.h"
 #include "src/common/slurm_xlator.h"

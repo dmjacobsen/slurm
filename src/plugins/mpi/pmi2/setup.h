@@ -73,7 +73,7 @@ typedef struct pmi2_job_info {
 	char **job_env;	     /* environment of job. use in stepd */
 
 	MPIR_PROCDESC *MPIR_proctable;	/* used only in srun */
-	opt_t      *srun_opt;	/* used only in srun */
+	srun_opt_t      *srun_opt;	/* used only in srun */
 	switch_jobinfo_t *switch_job; /* switch-specific job information */
 	char *resv_ports; /* MPI reserved ports */
 } pmi2_job_info_t;

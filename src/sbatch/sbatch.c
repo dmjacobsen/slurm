@@ -220,7 +220,7 @@ int main(int argc, char **argv)
         }
 
 	/* run cli_filter post_submit */
-	(void) cli_filter_plugin_post_submit(CLI_SBATCH, (void *) &opt);
+	(void) cli_filter_plugin_post_submit(CLI_SBATCH, resp->job_id, (void *) &opt);
 
 	if (!opt.parsable){
 		printf("Submitted batch job %u", resp->job_id);

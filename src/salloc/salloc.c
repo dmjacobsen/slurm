@@ -1061,8 +1061,6 @@ static void _set_rlimits(char **env)
  */
 static int _salloc_cli_filter_post_submit(uint32_t jobid) {
 	int rc = 0;
-	ListIterator opt_iter = NULL;
-	salloc_opt_t *opt_local = NULL;
 
 	if (cli_post_submit_run) {
 		return SLURM_SUCCESS;
