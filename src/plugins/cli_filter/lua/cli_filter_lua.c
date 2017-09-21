@@ -163,7 +163,7 @@ bool cli_lua_set_string(void *data, int idx, const char *name,
 		return false;
 
 	char **tgt = (char **) (data + opt_str->offset);
-	char *str = luaL_checkstring(L, idx);
+	const char *str = luaL_checkstring(L, idx);
 	xfree(*tgt);
 	if (str)
 		*tgt = xstrdup(str);
