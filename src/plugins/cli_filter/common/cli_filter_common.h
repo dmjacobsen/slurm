@@ -51,8 +51,9 @@
 typedef struct _string_option {
 	char *name;
 	size_t offset;
-        char * (*read)(void *, const struct _string_option *);
-        bool (*write)(const char *, void *, const struct _string_option *);
+        char * (*read)(void *, const struct _string_option *, int);
+        bool (*write)(const char *, void *, const struct _string_option *, int);
+	const char *count_field;
 } cli_string_option_t;
 
 const cli_string_option_t *cli_si_find(const char *name,
@@ -68,36 +69,36 @@ bool cli_si_set(const char *, const char *, void *, int client_type);
 
 char *cli_gen_json(uint32_t jobid, void *, int client_type);
 
-char *cli_si_get_string(void *, const cli_string_option_t *);
-bool cli_si_set_string(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_stringarray(void *, const cli_string_option_t *);
-char *cli_si_get_int(void *, const cli_string_option_t *);
-bool cli_si_set_int(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_long(void *, const cli_string_option_t *);
-bool cli_si_set_long(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_unsigned(void *, const cli_string_option_t *);
-bool cli_si_set_unsigned(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_uid(void *, const cli_string_option_t *);
-char *cli_si_get_gid(void *, const cli_string_option_t *);
-char *cli_si_get_int8_t(void *, const cli_string_option_t *);
-bool cli_si_set_int8_t(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_int16_t(void *, const cli_string_option_t *);
-bool cli_si_set_int16_t(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_int32_t(void *, const cli_string_option_t *);
-bool cli_si_set_int32_t(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_int64_t(void *, const cli_string_option_t *);
-bool cli_si_set_int64_t(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_uint8_t(void *, const cli_string_option_t *);
-bool cli_si_set_uint8_t(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_uint16_t(void *, const cli_string_option_t *);
-bool cli_si_set_uint16_t(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_uint32_t(void *, const cli_string_option_t *);
-bool cli_si_set_uint32_t(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_uint64_t(void *, const cli_string_option_t *);
-bool cli_si_set_uint64_t(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_boolean(void *, const cli_string_option_t *);
-bool cli_si_set_boolean(const char *, void *, const cli_string_option_t *);
-char *cli_si_get_time_t(void *, const cli_string_option_t *);
-bool cli_si_set_time_t(const char *, void *, const cli_string_option_t *);
+char *cli_si_get_string(void *, const cli_string_option_t *, int);
+bool cli_si_set_string(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_stringarray(void *, const cli_string_option_t *, int);
+char *cli_si_get_int(void *, const cli_string_option_t *, int);
+bool cli_si_set_int(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_long(void *, const cli_string_option_t *, int);
+bool cli_si_set_long(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_unsigned(void *, const cli_string_option_t *, int);
+bool cli_si_set_unsigned(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_uid(void *, const cli_string_option_t *, int);
+char *cli_si_get_gid(void *, const cli_string_option_t *, int);
+char *cli_si_get_int8_t(void *, const cli_string_option_t *, int);
+bool cli_si_set_int8_t(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_int16_t(void *, const cli_string_option_t *, int);
+bool cli_si_set_int16_t(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_int32_t(void *, const cli_string_option_t *, int);
+bool cli_si_set_int32_t(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_int64_t(void *, const cli_string_option_t *, int);
+bool cli_si_set_int64_t(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_uint8_t(void *, const cli_string_option_t *, int);
+bool cli_si_set_uint8_t(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_uint16_t(void *, const cli_string_option_t *, int);
+bool cli_si_set_uint16_t(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_uint32_t(void *, const cli_string_option_t *, int);
+bool cli_si_set_uint32_t(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_uint64_t(void *, const cli_string_option_t *, int);
+bool cli_si_set_uint64_t(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_boolean(void *, const cli_string_option_t *, int);
+bool cli_si_set_boolean(const char *, void *, const cli_string_option_t *, int);
+char *cli_si_get_time_t(void *, const cli_string_option_t *, int);
+bool cli_si_set_time_t(const char *, void *, const cli_string_option_t *, int);
 
 #endif

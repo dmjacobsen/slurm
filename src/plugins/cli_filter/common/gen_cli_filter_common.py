@@ -43,11 +43,11 @@ import sys
 import subprocess
 import re
 
+verbose = False
 structRegex = re.compile(r'\s*(typedef\s+)?struct\s+(\S+)\s*{')
 
 string_iface = [
 	{ 'type': 'char', 'pointer': 1, 'read': 'cli_si_get_string', 'write': 'cli_si_set_string' },
-	{ 'type': 'char', 'pointer': 2, 'read': 'cli_si_get_stringarray', 'write': "NULL" },
 	{ 'type': 'int', 'pointer': 0, 'read': 'cli_si_get_int', 'write': 'cli_si_set_int' },
 	{ 'type': 'long', 'pointer': 0, 'read': 'cli_si_get_long', 'write': 'cli_si_set_long' },
 	{ 'type': 'unsigned', 'pointer': 0, 'read': 'cli_si_get_unsigned', 'write': 'cli_si_set_unsigned' },
@@ -65,11 +65,13 @@ string_iface = [
 	{ 'type': 'mem_bind_type_t', 'pointer': 0, 'read': 'cli_si_get_unsigned', 'write': 'cli_si_set_unsigned' },
 	{ 'type': 'cpu_bind_type_t', 'pointer': 0, 'read': 'cli_si_get_unsigned', 'write': 'cli_si_set_unsigned' },
 	{ 'type': 'time_t', 'pointer': 0, 'read': 'cli_si_get_time_t', 'write': 'cli_si_set_time_t' },
+	{ 'name': 'argv', 'count_field': 'argc', 'read': 'cli_si_get_stringarray', 'write': 'NULL' },
+	{ 'name': 'script_argv', 'count_field': 'script_argc', 'read': 'cli_si_get_stringarray', 'write': 'NULL' },
+	{ 'name': 'spank_job_env', 'count_field': 'spank_job_env_size', 'read': 'cli_si_get_stringarray', 'write': 'NULL'}
 ]
 
 lua_iface = [
 	{ 'type': 'char', 'pointer': 1, 'read': 'cli_lua_push_string', 'write': 'cli_lua_set_string' },
-	{ 'type': 'char', 'pointer': 2, 'read': 'cli_lua_stringarray', 'write': "NULL" },
 	{ 'type': 'int', 'pointer': 0, 'read': 'cli_lua_push_int', 'write': 'cli_lua_set_int' },
 	{ 'type': 'long', 'pointer': 0, 'read': 'cli_lua_push_long', 'write': 'cli_lua_set_long' },
 	{ 'type': 'unsigned', 'pointer': 0, 'read': 'cli_lua_push_unsigned', 'write': 'cli_lua_set_unsigned' },
@@ -95,7 +97,8 @@ def read_cli_opt_header(filename, structs):
 	if "CPPFLAGS" in os.environ:
 		cmdline += " %s" % os.environ['CPPFLAGS']
 	cmdline += " %s" % filename
-	sys.stderr.write('cmdline: %s\n' % cmdline)
+	if verbose:
+		sys.stderr.write('cmdline: %s\n' % cmdline)
 	proc = subprocess.Popen(cmdline, stdout=subprocess.PIPE,
 		stderr=subprocess.PIPE, shell=True)
 	stdout,stderr = proc.communicate()
@@ -158,17 +161,24 @@ def gen_interface(structs, iface_types, type_name, var_suffix, include):
 			m_data = structs[struct][member]
 			iface_data = None
 			for type_data in iface_types:
-				if m_data['type'] == type_data['type'] and \
+				if 'type' in type_data and 'pointer' in type_data and \
+					m_data['type'] == type_data['type'] and \
 					m_data['pointer'] == type_data['pointer']:
 
 					iface_data = type_data
+				elif 'name' in type_data and member == type_data['name']:
+					iface_data = type_data
 			if iface_data is None:
-				sys.stderr.write("Skipping %s member %s, type "
-					"missing\n" % (struct, member))
+				if verbose:
+					sys.stderr.write("Skipping %s member %s, type "
+						"missing\n" % (struct, member))
 				continue
-			mapping = '\t{ "%s", offsetof(struct %s, %s), %s, %s }' \
+			count_field = 'NULL'
+			if 'count_field' in iface_data:
+				count_field = '"%s"' % iface_data['count_field']
+			mapping = '\t{ "%s", offsetof(struct %s, %s), %s, %s, %s }' \
 				% (member, struct, member, iface_data['read'],
-				iface_data['write'])
+				iface_data['write'], count_field)
 			mapped.append(mapping)
 		if len(mapped) == 0:
 			continue
@@ -183,7 +193,7 @@ def gen_interface(structs, iface_types, type_name, var_suffix, include):
 			if len(item) > 71:
 				print("%s" % (item[:endidx]))
 				print("\t\t%s," % (item[endidx:]))
-		print("\t{ NULL, 0, NULL, NULL }")
+		print("\t{ NULL, 0, NULL, NULL, NULL }")
 		print('};')
 
 def main(args):
@@ -196,6 +206,8 @@ def main(args):
 			iface = "string"
 		elif arg == "--lua":
 			iface = "lua"
+		elif arg == "--verbose":
+			verbose = True
 		elif os.path.exists(arg):
 			files.append(arg)
 		else:

@@ -67,6 +67,7 @@ typedef struct _lua_option {
 			lua_State *);
 	bool (*write)(void *, int, const char *, const struct _lua_option *,
 			lua_State *);
+	const char *count_field;
 } cli_lua_option_t;
 
 extern cli_lua_option_t salloc_options_li[];

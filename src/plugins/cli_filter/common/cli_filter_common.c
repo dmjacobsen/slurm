@@ -80,7 +80,7 @@ char *cli_si_get(const char *key, void *data, int client_id)
 	if (!found)
 		return NULL;
 
-	return (found->read)(data, found);
+	return (found->read)(data, found, client_id);
 }
 
 bool cli_si_set(const char *value, const char *key, void *data, int client_id)
@@ -90,7 +90,7 @@ bool cli_si_set(const char *value, const char *key, void *data, int client_id)
 
 	const cli_string_option_t *opt = _lookup_client(client_id);
 	const cli_string_option_t *found = cli_si_find(key, opt);
-	return (found->write)(value, data, found);
+	return (found->write)(value, data, found, client_id);
 }
 
 static char *_json_escape(const char *str) {
@@ -150,7 +150,8 @@ char *cli_gen_json(uint32_t jobid, void *data, int client_id) {
 }
 
 
-char *cli_si_get_string(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_string(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -160,7 +161,7 @@ char *cli_si_get_string(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_string(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !stropt || !value)
                 return false;
@@ -171,20 +172,31 @@ bool cli_si_set_string(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_stringarray(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_stringarray(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
-	if (!data || !stropt)
+	if (!data || !stropt || !stropt->count_field)
 		return NULL;
 	char ***tgt = (char ***) (data + stropt->offset);
-	char *ret = xmalloc(1024);
+	char *limit_str = cli_si_get(stropt->count_field, data, client_id);
+	char *ret = NULL;
 	char **arg = *tgt;
-	for (arg = *tgt; arg && *arg; arg++) {
+	size_t limit = 0;
+	if (!limit_str)
+		return NULL;
+
+	limit = (ssize_t) strtol(limit_str, NULL, 10);
+
+	ret = xmalloc(1024);
+	for (arg = *tgt; arg && *arg && arg - *tgt < limit; arg++) {
 		xstrfmtcat(ret, "%s|", *arg);
 	}
+	xfree(limit_str);
 	return ret;
 }
 
-char *cli_si_get_int(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_int(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -193,7 +205,7 @@ char *cli_si_get_int(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_int(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -204,7 +216,8 @@ bool cli_si_set_int(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_long(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_long(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -213,7 +226,7 @@ char *cli_si_get_long(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_long(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -224,7 +237,8 @@ bool cli_si_set_long(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_unsigned(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_unsigned(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -233,7 +247,7 @@ char *cli_si_get_unsigned(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_unsigned(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -244,7 +258,8 @@ bool cli_si_set_unsigned(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_uid(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_uid(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -252,7 +267,8 @@ char *cli_si_get_uid(void *data, const cli_string_option_t *stropt)
         return xstrdup_printf("%d", *tgt);
 }
 
-char *cli_si_get_gid(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_gid(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -260,7 +276,8 @@ char *cli_si_get_gid(void *data, const cli_string_option_t *stropt)
         return xstrdup_printf("%d", *tgt);
 }
 
-char *cli_si_get_int8_t(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_int8_t(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -269,7 +286,7 @@ char *cli_si_get_int8_t(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_int8_t(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -280,7 +297,8 @@ bool cli_si_set_int8_t(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_int16_t(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_int16_t(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -289,7 +307,7 @@ char *cli_si_get_int16_t(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_int16_t(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -300,7 +318,8 @@ bool cli_si_set_int16_t(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_int32_t(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_int32_t(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -309,7 +328,7 @@ char *cli_si_get_int32_t(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_int32_t(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -320,7 +339,8 @@ bool cli_si_set_int32_t(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_int64_t(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_int64_t(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -329,7 +349,7 @@ char *cli_si_get_int64_t(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_int64_t(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -340,7 +360,8 @@ bool cli_si_set_int64_t(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_uint8_t(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_uint8_t(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -349,7 +370,7 @@ char *cli_si_get_uint8_t(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_uint8_t(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -360,7 +381,8 @@ bool cli_si_set_uint8_t(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_uint16_t(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_uint16_t(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -369,7 +391,7 @@ char *cli_si_get_uint16_t(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_uint16_t(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -380,7 +402,8 @@ bool cli_si_set_uint16_t(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_uint32_t(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_uint32_t(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -389,7 +412,7 @@ char *cli_si_get_uint32_t(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_uint32_t(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -400,7 +423,8 @@ bool cli_si_set_uint32_t(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_uint64_t(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_uint64_t(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -409,7 +433,7 @@ char *cli_si_get_uint64_t(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_uint64_t(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -420,7 +444,8 @@ bool cli_si_set_uint64_t(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_boolean(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_boolean(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -429,7 +454,7 @@ char *cli_si_get_boolean(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_boolean(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
@@ -442,7 +467,8 @@ bool cli_si_set_boolean(const char *value, void *data,
         return true;
 }
 
-char *cli_si_get_time_t(void *data, const cli_string_option_t *stropt)
+char *cli_si_get_time_t(void *data, const cli_string_option_t *stropt,
+	int client_id)
 {
         if (!data || !stropt)
                 return NULL;
@@ -451,7 +477,7 @@ char *cli_si_get_time_t(void *data, const cli_string_option_t *stropt)
 }
 
 bool cli_si_set_time_t(const char *value, void *data,
-		const cli_string_option_t *stropt)
+		const cli_string_option_t *stropt, int client_id)
 {
         if (!data || !value || !stropt)
                 return false;
