@@ -64,6 +64,7 @@
 #include "src/common/uid.h"
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
+#include "src/common/cli_filter.h"
 
 /* global variables */
 struct bcast_parameters params;	/* program parameters */
@@ -91,5 +92,10 @@ int main(int argc, char **argv)
 	}
 
 	rc = bcast_file(&params);
+
+	/* run cli_filter post_submit */
+	(void) cli_filter_plugin_post_submit(CLI_SBCAST, params.job_id,
+		(void *) &params);
+
 	return rc;
 }

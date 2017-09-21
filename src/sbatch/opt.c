@@ -191,7 +191,7 @@ enum wrappers {
 #define LONG_OPT_DELAY_BOOT      0x168
 
 /*---- global variables, defined in opt.h ----*/
-opt_t opt;
+sbatch_opt_t opt;
 int error_exit = 1;
 int ignore_pbs = 0;
 

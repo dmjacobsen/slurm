@@ -74,6 +74,7 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 #include "src/common/util-net.h"
+#include "src/common/cli_filter.h"
 
 #include "src/api/pmi_server.h"
 
@@ -209,7 +210,7 @@ extern char **environ;
 
 /*---- global variables, defined in opt.h ----*/
 int _verbose;
-opt_t opt;
+srun_opt_t opt;
 int error_exit = 1;
 int immediate_exit = 1;
 char *mpi_type = NULL;
@@ -218,6 +219,7 @@ resource_allocation_response_msg_t *global_resp = NULL;
 
 /*---- forward declarations of static functions  ----*/
 static bool mpi_initialized = false;
+static bool srun_cli_job_submit_run = false;
 typedef struct env_vars env_vars_t;
 
 static int _get_task_count(void);
@@ -2745,6 +2747,23 @@ static bool _under_parallel_debugger (void)
 #else
 	return (MPIR_being_debugged != 0);
 #endif
+}
+
+/*
+ * Run cli_filter_post_submit on all opt structures
+ * Convenience function since this might need to run in two spots
+ */
+int srun_cli_filter_post_submit(uint32_t jobid) {
+	int rc = 0;
+
+	if (srun_cli_job_submit_run) {
+		return SLURM_SUCCESS;
+	}
+
+	rc = cli_filter_plugin_post_submit(CLI_SRUN, jobid, (void *) &opt);
+
+	srun_cli_job_submit_run = true;
+	return rc;
 }
 
 

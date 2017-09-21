@@ -57,7 +57,7 @@
 #include "src/common/slurm_rlimits_info.h"
 #include "src/common/xstring.h"
 #include "src/common/xmalloc.h"
-
+#include "src/common/cli_filter.h"
 #include "src/sbatch/opt.h"
 
 #define MAX_RETRIES 15
@@ -100,6 +100,12 @@ int main(int argc, char **argv)
 	if (atexit((void (*) (void)) spank_fini) < 0)
 		error("Failed to register atexit handler for plugins: %m");
 
+	/* run cli_filter setup_defaults */
+	rc = cli_filter_plugin_setup_defaults(CLI_SBATCH, (void *) &opt);
+	if (rc != SLURM_SUCCESS) {
+		exit(error_exit);
+	}
+
 	script_name = process_options_first_pass(argc, argv);
 	/* reinit log with new verbosity (if changed by command line) */
 	if (opt.verbose || opt.quiet) {
@@ -128,6 +134,12 @@ int main(int argc, char **argv)
 
 	if (opt.burst_buffer_file)
 		_add_bb_to_script(&script_body, opt.burst_buffer_file);
+
+	/* run cli_filter pre_submit */
+	rc = cli_filter_plugin_pre_submit(CLI_SBATCH, (void *) &opt);
+	if (rc != SLURM_SUCCESS) {
+		exit(error_exit);
+	}
 
 	if (spank_init_post_opt() < 0) {
 		error("Plugin stack post-option processing failed");
@@ -206,6 +218,9 @@ int main(int argc, char **argv)
 			error("%s", msg);
 		sleep (++retries);
         }
+
+	/* run cli_filter post_submit */
+	(void) cli_filter_plugin_post_submit(CLI_SBATCH, (void *) &opt);
 
 	if (!opt.parsable){
 		printf("Submitted batch job %u", resp->job_id);

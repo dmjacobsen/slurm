@@ -67,6 +67,7 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xsignal.h"
 #include "src/common/xstring.h"
+#include "src/common/cli_filter.h"
 
 #include "src/salloc/salloc.h"
 #include "src/salloc/opt.h"
@@ -99,6 +100,7 @@ int command_argc;
 pid_t command_pid = -1;
 char *work_dir = NULL;
 static int is_interactive;
+static bool cli_post_submit_run = false;
 
 enum possible_allocation_states allocation_state = NOT_GRANTED;
 pthread_cond_t  allocation_state_cond = PTHREAD_COND_INITIALIZER;
@@ -129,6 +131,7 @@ static void _set_submit_dir_env(void);
 static void _signal_while_allocating(int signo);
 static void _timeout_handler(srun_timeout_msg_t *msg);
 static void _user_msg_handler(srun_user_msg_t *msg);
+static int _salloc_cli_filter_post_submit(uint32_t jobid);
 
 #ifdef HAVE_BG
 static int _wait_bluegene_block_ready(
@@ -191,6 +194,11 @@ int main(int argc, char **argv)
 	if (atexit((void (*) (void)) spank_fini) < 0)
 		error("Failed to register atexit handler for plugins: %m");
 
+	/* run cli_filter setup_defaults */
+	rc = cli_filter_plugin_setup_defaults(CLI_SALLOC, (void *) &opt);
+	if (rc != SLURM_SUCCESS) {
+		exit(error_exit);
+	}
 
 	if (initialize_and_process_args(argc, argv) < 0) {
 		error("salloc parameter parsing");
@@ -206,6 +214,12 @@ int main(int argc, char **argv)
 
 	if (spank_init_post_opt() < 0) {
 		error("Plugin stack post-option processing failed");
+		exit(error_exit);
+	}
+
+	/* run cli_filter pre_submit */
+	rc = cli_filter_plugin_pre_submit(CLI_SALLOC, (void *) &opt);
+	if (rc != SLURM_SUCCESS) {
 		exit(error_exit);
 	}
 
@@ -384,6 +398,9 @@ int main(int argc, char **argv)
 		}
 #endif
 	}
+
+	if (_salloc_cli_filter_post_submit(pending_job_id) != SLURM_SUCCESS)
+		goto relinquish;
 
 	after = time(NULL);
 	if (opt.bell == BELL_ALWAYS
@@ -856,6 +873,13 @@ static void _pending_callback(uint32_t job_id)
 {
 	info("Pending job allocation %u", job_id);
 	pending_job_id = job_id;
+
+	/* run cli_filter post_submit here so it runs while we wait
+	 * for allocation */
+	if (_salloc_cli_filter_post_submit(job_id) != SLURM_SUCCESS) {
+		slurm_complete_job(job_id, 1);
+		exit(1);
+	}
 }
 
 static void _exit_on_signal(int signo)
@@ -1028,6 +1052,26 @@ static void _set_rlimits(char **env)
 			continue;
 		}
 	}
+}
+
+/*
+ * Run cli_filter_post_submit on all opt structures
+ * Convenience function since this might need to run in two spots
+ * uses a static bool to prevent multiple executions
+ */
+static int _salloc_cli_filter_post_submit(uint32_t jobid) {
+	int rc = 0;
+	ListIterator opt_iter = NULL;
+	salloc_opt_t *opt_local = NULL;
+
+	if (cli_post_submit_run) {
+		return SLURM_SUCCESS;
+	}
+
+	rc = cli_filter_plugin_post_submit(CLI_SALLOC, jobid, (void *) &opt);
+
+	cli_post_submit_run = true;
+	return rc;
 }
 
 #ifdef HAVE_BG

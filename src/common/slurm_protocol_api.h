@@ -262,6 +262,13 @@ char *slurm_get_gres_plugins(void);
  */
 char *slurm_get_job_submit_plugins(void);
 
+/* slurm_get_cli_filter_plugins
+ * get cli_filter_plugins from slurmctld_conf object from
+ * slurmctld_conf object
+ * RET char *   - cli_filter_plugins, MUST be xfreed by caller
+ */
+char *slurm_get_cli_filter_plugins(void);
+
 /* slurm_get_slurmctld_logfile
  * get slurmctld_logfile from slurmctld_conf object from slurmctld_conf object
  * RET char *   - slurmctld_logfile, MUST be xfreed by caller

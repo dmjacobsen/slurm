@@ -69,6 +69,7 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xsignal.h"
 #include "src/common/xstring.h"
+#include "src/common/cli_filter.h"
 
 #include "src/api/step_launch.h"
 
@@ -438,6 +439,8 @@ extern void init_srun(int ac, char **av,
 		      log_options_t *logopt, int debug_level,
 		      bool handle_signals)
 {
+	int rc = 0;
+
 	/* This must happen before we spawn any threads
 	 * which are not designed to handle arbitrary signals */
 	if (handle_signals) {
@@ -459,6 +462,12 @@ extern void init_srun(int ac, char **av,
 	if (atexit(_call_spank_fini) < 0)
 		error("Failed to register atexit handler for plugins: %m");
 
+	/* run cli_filter setup_defaults */
+	rc = cli_filter_plugin_setup_defaults(CLI_SRUN, (void *) &opt);
+	if (rc != SLURM_SUCCESS) {
+		exit(error_exit);
+	}
+
 	/* set default options, process commandline arguments, and
 	 * verify some basic values
 	 */
@@ -467,6 +476,12 @@ extern void init_srun(int ac, char **av,
 		exit (1);
 	}
 	record_ppid();
+
+	/* run cli_filter pre_submit */
+	rc = cli_filter_plugin_pre_submit(CLI_SRUN, (void *) &opt);
+	if (rc != SLURM_SUCCESS) {
+		exit(error_exit);
+	}
 
 	if (spank_init_post_opt() < 0) {
 		error("Plugin stack post-option processing failed.");
@@ -504,6 +519,8 @@ extern void create_srun_job(srun_job_t **p_job, bool *got_alloc,
 {
 	resource_allocation_response_msg_t *resp;
 	srun_job_t *job = NULL;
+	uint32_t my_job_id = 0;
+	int rc = 0;
 
 	/* now global "opt" should be filled in and available,
 	 * create a job from opt
@@ -527,6 +544,7 @@ extern void create_srun_job(srun_job_t **p_job, bool *got_alloc,
 			exit(error_exit);
 		}
 	} else if ((resp = existing_allocation())) {
+		my_job_id = resp->job_id;
 		select_g_alter_node_cnt(SELECT_APPLY_NODE_MAX_OFFSET,
 					&resp->node_cnt);
 		if (opt.nodes_set_env && !opt.nodes_set_opt &&
@@ -613,6 +631,7 @@ extern void create_srun_job(srun_job_t **p_job, bool *got_alloc,
 			exit(error_exit);
 		}
 		job = job_create_allocation(resp);
+		my_job_id = resp->job_id;
 
 		opt.time_limit = NO_VAL;/* not applicable for step, only job */
 		xfree(opt.constraints);	/* not applicable for this step */
@@ -642,6 +661,14 @@ extern void create_srun_job(srun_job_t **p_job, bool *got_alloc,
 
 		global_resp = NULL;
 		slurm_free_resource_allocation_response_msg(resp);
+	}
+
+	/* run cli_filter_post_submit here in case the job immediately
+	 * allocated
+	 */
+	if (srun_cli_filter_post_submit(my_job_id) != SLURM_SUCCESS) {
+		slurm_complete_job(my_job_id, 1);
+		exit(error_exit);
 	}
 
 	/*
