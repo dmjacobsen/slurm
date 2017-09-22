@@ -131,32 +131,66 @@ int _set_nodes(char *value, int cli_type, void *opt) {
 
 int _set_default(char *key, char *value, int cli_type, void *opt) {
 	int cli_match = -1;
-	char *component = strchr(key, ':');
-	if (!component) {
-		component = key;
-	} else {
-		*component++ = '\0';
-		if (strcasecmp(key, "salloc") == 0)
+	char *tokens[3] = { NULL, NULL, NULL };
+	int n_tokens = 0;
+	int used_tokens = 0;
+	char *ptr, search, sv = NULL;
+	char *command = NULL, cluster = NULL, component = NULL;
+	char *my_cluster = slurm_get_cluster_name();
+
+	search = key;
+	/* sbatch:edison:constraint = ivybridge
+         * edison:constraint = ivybridge
+	 */
+	while ((ptr = strtok_r(search, ":", *sv)) != NULL && n_tokens < 3) {
+		tokens[n_tokens] = ptr;
+	}
+	if (n_tokens > 2)
+		command = _trim(tokens[used_tokens++]);
+	if (n_tokens > 1)
+		cluster = _trim(tokens[used_tokens++]);
+	component = _trim(tokens[used_tokens++]);
+
+	if (command != NULL) {
+		if (strcasecmp(command, "salloc") == 0)
 			cli_match = CLI_SALLOC;
-		else if (strcasecmp(key, "sbatch") == 0)
+		else if (strcasecmp(command, "sbatch") == 0)
 			cli_match = CLI_SBATCH;
-		else if (strcasecmp(key, "srun") == 0)
+		else if (strcasecmp(command, "srun") == 0)
 			cli_match = CLI_SRUN;
+		else if (strcmp(command, "*") == 0)
+			cli_match = -1;
 		else
 			cli_match = CLI_INVALID;
 	}
 
-	if (cli_match != -1 && cli_match != cli_type)
-		return SLURM_SUCCESS;
+	if (cluster != NULL && strcmp(cluster, my_cluster) != 0) {
+		/* if not for this cluster, exit */
+		rc = SLURM_SUCCESS;
+		goto cleanup;
+	}
 
-	if (strcasecmp(component, "nodes") == 0)
-		return _set_nodes(value, cli_type, opt);
+	if (cli_match != -1 && cli_match != cli_type) {
+		/* if not for this client, exit */
+		rc = SLURM_SUCCESS;
+		goto cleanup;
+	}
+
+	if (strcasecmp(component, "nodes") == 0) {
+		/* special action for "nodes" */
+		rc = _set_nodes(value, cli_type, opt);
+		goto cleanup;
+	}
 
 	/* default action is to directly manipulate the data structure */
-	if (!cli_si_set(value, key, opt, cli_type))
-		return SLURM_ERROR;
+	if (!cli_si_set(value, key, opt, cli_type)) {
+		rc = SLURM_ERROR;
+		goto cleanup;
+	}
 
-	return SLURM_SUCCESS;
+cleanup:
+	xfree(my_cluster);
+	return rc;
 }
 
 extern int setup_defaults(int cli_type, void *opt) {
