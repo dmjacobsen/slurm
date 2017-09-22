@@ -72,6 +72,7 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 #include "src/common/util-net.h"
+#include "src/common/cli_filter.h"
 
 #include "src/sbatch/opt.h"
 
@@ -994,7 +995,16 @@ char *process_options_first_pass(int argc, char **argv)
 int process_options_second_pass(int argc, char **argv, const char *file,
 				const void *script_body, int script_size)
 {
-	int i;
+	int i, rc = 0;
+
+	/* initialize option defaults */
+	_opt_default();
+
+	/* run cli_filter setup_defaults */
+	rc = cli_filter_plugin_setup_defaults(CLI_SBATCH, (void *) &opt);
+	if (rc != SLURM_SUCCESS) {
+		exit(error_exit);
+	}
 
 	/* set options from batch script */
 	_opt_batch_script(file, script_body, script_size);

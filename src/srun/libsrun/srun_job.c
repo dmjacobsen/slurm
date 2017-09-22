@@ -462,12 +462,6 @@ extern void init_srun(int ac, char **av,
 	if (atexit(_call_spank_fini) < 0)
 		error("Failed to register atexit handler for plugins: %m");
 
-	/* run cli_filter setup_defaults */
-	rc = cli_filter_plugin_setup_defaults(CLI_SRUN, (void *) &opt);
-	if (rc != SLURM_SUCCESS) {
-		exit(error_exit);
-	}
-
 	/* set default options, process commandline arguments, and
 	 * verify some basic values
 	 */

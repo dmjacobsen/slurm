@@ -194,12 +194,6 @@ int main(int argc, char **argv)
 	if (atexit((void (*) (void)) spank_fini) < 0)
 		error("Failed to register atexit handler for plugins: %m");
 
-	/* run cli_filter setup_defaults */
-	rc = cli_filter_plugin_setup_defaults(CLI_SALLOC, (void *) &opt);
-	if (rc != SLURM_SUCCESS) {
-		exit(error_exit);
-	}
-
 	if (initialize_and_process_args(argc, argv) < 0) {
 		error("salloc parameter parsing");
 		exit(error_exit);

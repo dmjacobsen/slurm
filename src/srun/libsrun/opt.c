@@ -253,8 +253,17 @@ static bool  _valid_node_list(char **node_list_pptr);
 
 int initialize_and_process_args(int argc, char **argv)
 {
+	int rc = 0;
+
 	/* initialize option defaults */
 	_opt_default();
+
+	/* run cli_filter setup_defaults */
+	rc = cli_filter_plugin_setup_defaults(CLI_SRUN,
+		(void *) &opt);
+	if (rc != SLURM_SUCCESS) {
+		exit(error_exit);
+	}
 
 	/* initialize options with env vars */
 	_opt_env();

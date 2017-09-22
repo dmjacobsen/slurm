@@ -100,12 +100,6 @@ int main(int argc, char **argv)
 	if (atexit((void (*) (void)) spank_fini) < 0)
 		error("Failed to register atexit handler for plugins: %m");
 
-	/* run cli_filter setup_defaults */
-	rc = cli_filter_plugin_setup_defaults(CLI_SBATCH, (void *) &opt);
-	if (rc != SLURM_SUCCESS) {
-		exit(error_exit);
-	}
-
 	script_name = process_options_first_pass(argc, argv);
 	/* reinit log with new verbosity (if changed by command line) */
 	if (opt.verbose || opt.quiet) {
