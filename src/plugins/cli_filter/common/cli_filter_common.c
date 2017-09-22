@@ -77,7 +77,7 @@ char *cli_si_get(const char *key, void *data, int client_id)
 
 	const cli_string_option_t *opt = _lookup_client(client_id);
 	const cli_string_option_t *found = cli_si_find(key, opt);
-	if (!found)
+	if (!found || !found->read)
 		return NULL;
 
 	return (found->read)(data, found, client_id);
@@ -90,6 +90,10 @@ bool cli_si_set(const char *value, const char *key, void *data, int client_id)
 
 	const cli_string_option_t *opt = _lookup_client(client_id);
 	const cli_string_option_t *found = cli_si_find(key, opt);
+
+	if (!found || !found->write)
+		return false;
+
 	return (found->write)(value, data, found, client_id);
 }
 
