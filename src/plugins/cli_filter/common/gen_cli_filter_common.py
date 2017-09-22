@@ -89,6 +89,9 @@ lua_iface = [
 	{ 'type': 'mem_bind_type_t', 'pointer': 0, 'read': 'cli_lua_push_unsigned', 'write': 'cli_lua_set_unsigned' },
 	{ 'type': 'cpu_bind_type_t', 'pointer': 0, 'read': 'cli_lua_push_unsigned', 'write': 'cli_lua_set_unsigned' },
 	{ 'type': 'time_t', 'pointer': 0, 'read': 'cli_lua_push_time_t', 'write': 'cli_lua_set_time_t' },
+	{ 'name': 'argv', 'count_field': 'argc', 'read': 'cli_lua_stringarray', 'write': 'NULL' },
+	{ 'name': 'script_argv', 'count_field': 'script_argc', 'read': 'cli_lua_stringarray', 'write': 'NULL' },
+	{ 'name': 'spank_job_env', 'count_field': 'spank_job_env_size', 'read': 'cli_lua_stringarray', 'write': 'NULL'}
 ]
 
 def read_cli_opt_header(filename, structs):

@@ -466,15 +466,30 @@ static int _stringarray_field_index(lua_State *L)
 bool cli_lua_stringarray(void *data, const char *name,
 			   const cli_lua_option_t *opt_str, lua_State *L)
 {
-	if (!data || !name || !opt_str || !L)
+	ssize_t limit = 0;
+	char **tgt = NULL;
+	if (!L)
 		return false;
-	char ***tgt = (char ***) (data + opt_str->offset);
-	char **ptr = *tgt;
-	int sz = 0;
-	for ( ptr = *tgt; ptr && *ptr; ptr++) {
-		sz++;
+
+	if (data && name && opt_str && opt_str->count_field) {
+		char ***temp = NULL;
+		/* the options metatable was left on stack position -1 */
+
+		lua_getfield(L, -1, "_cli_type");
+		int cli_type = (int) luaL_checknumber(L, -1);
+		char *limit_str = cli_si_get(opt_str->count_field, data, cli_type);
+		if (limit_str == NULL)
+			return false;
+
+		limit = (ssize_t) strtol(limit_str, NULL, 10);
+		temp = (char ***) (data + opt_str->offset);
+		if (temp)
+			tgt = *temp;
 	}
 
+	/* if all went well above then limit and tgt hold non-zero data
+	 * otherwise, this will create an empty array intentionally to
+         * allow the client code to iterate over it */
 	lua_newtable(L);
 	lua_newtable(L);
 	lua_pushcfunction(L, _stringarray_field_index);
@@ -483,9 +498,9 @@ bool cli_lua_stringarray(void *data, const char *name,
 	lua_pushcfunction(L, _stringarray_field);
 	lua_setfield(L, -2, "__newindex");
 */
-	lua_pushlightuserdata(L, *tgt);
+	lua_pushlightuserdata(L, tgt);
 	lua_setfield(L, -2, "_stringarray");
-	lua_pushnumber(L, (double) sz);
+	lua_pushnumber(L, (double) limit);
 	lua_setfield(L, -2, "_stringarray_sz");
 	lua_setmetatable(L, -2);
 
@@ -507,6 +522,11 @@ static int _get_option_field_index(lua_State *L)
 	data = lua_touserdata(L, -1);
 
 	req_option = find_opt_str(name, opt_str);
+	if (!req_option || !req_option->read)
+		return 0;
+
+	lua_settop(L, -3);
+
 	if ((req_option->read)(data, name, req_option, L))
 		return 1;
 
@@ -527,9 +547,13 @@ static int _set_option_field(lua_State *L)
 	lua_getfield(L, -2, "_opt_data");
 	data = lua_touserdata(L, -1);
 
+
 	req_option = find_opt_str(name, opt_str);
-	if (!(req_option->write))
+	if (!req_option || !req_option->write)
 		return 0;
+
+	lua_settop(L, -3);
+
 	if ((req_option->write)(data, 3, name, req_option, L))
 		return 1;
 
