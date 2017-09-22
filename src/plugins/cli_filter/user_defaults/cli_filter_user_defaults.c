@@ -130,20 +130,21 @@ int _set_nodes(char *value, int cli_type, void *opt) {
 }
 
 int _set_default(char *key, char *value, int cli_type, void *opt) {
-	int cli_match = -1;
+	int cli_match = -1, rc = SLURM_SUCCESS;
 	char *tokens[3] = { NULL, NULL, NULL };
 	int n_tokens = 0;
 	int used_tokens = 0;
-	char *ptr, search, sv = NULL;
-	char *command = NULL, cluster = NULL, component = NULL;
+	char *ptr, *search, *sv = NULL;
+	char *command = NULL, *cluster = NULL, *component = NULL;
 	char *my_cluster = slurm_get_cluster_name();
 
 	search = key;
 	/* sbatch:edison:constraint = ivybridge
          * edison:constraint = ivybridge
 	 */
-	while ((ptr = strtok_r(search, ":", *sv)) != NULL && n_tokens < 3) {
-		tokens[n_tokens] = ptr;
+	while ((ptr = strtok_r(search, ":", &sv)) != NULL && n_tokens < 3) {
+		search = NULL;
+		tokens[n_tokens++] = ptr;
 	}
 	if (n_tokens > 2)
 		command = _trim(tokens[used_tokens++]);
@@ -183,7 +184,7 @@ int _set_default(char *key, char *value, int cli_type, void *opt) {
 	}
 
 	/* default action is to directly manipulate the data structure */
-	if (!cli_si_set(value, key, opt, cli_type)) {
+	if (!cli_si_set(value, component, opt, cli_type)) {
 		rc = SLURM_ERROR;
 		goto cleanup;
 	}
