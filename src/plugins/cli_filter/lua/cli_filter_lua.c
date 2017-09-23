@@ -94,6 +94,7 @@ static int _log_lua_msg(lua_State *L);
 static int _log_lua_error(lua_State *L);
 static int _log_lua_user_msg(lua_State *L);
 static int _lua_cli_json(lua_State *L);
+static int _lua_cli_json_env(lua_State *L);
 static int _load_script(void);
 static void _stack_dump (char *header, lua_State *L);
 
@@ -102,6 +103,7 @@ static const struct luaL_Reg slurm_functions [] = {
 	{ "error",	_log_lua_error },
 	{ "user_msg",	_log_lua_user_msg },
 	{ "cli_json",	_lua_cli_json },
+	{ "cli_json_env",_lua_cli_json_env },
 	{ NULL,		NULL        }
 };
 
@@ -618,6 +620,14 @@ static int _lua_cli_json(lua_State *L)
 	lua_getfield(L, -2, "_cli_type");
 	int cli_type = (int) lua_tonumber(L, -1);
 	char *output = cli_gen_json(jobid, data, cli_type);
+	lua_pushstring(L, output);
+	xfree(output);
+	return 1;
+}
+
+static int _lua_cli_json_env(lua_State *L)
+{
+	char *output = cli_gen_env_json();
 	lua_pushstring(L, output);
 	xfree(output);
 	return 1;

@@ -44,6 +44,10 @@
 #include <grp.h>
 #include <ctype.h>
 
+#define MAX_STR_LEN 524288
+
+extern char **environ;
+
 /* in the future this function and the option_string data structures should
  * probably be converted to use a binary search or other faster method for
  * discovering the requested option */
@@ -97,37 +101,64 @@ bool cli_si_set(const char *value, const char *key, void *data, int client_id)
 	return (found->write)(value, data, found, client_id);
 }
 
-static char *_json_escape(const char *str) {
+/* Escape characters according to RFC7159 */
+static char *_json_escape(const char *str)
+{
 	char *ret = NULL;
-	int i;
-	for (i = 0; i < strlen(str); ++i) {
+	int i, o, len;
+
+	len = strlen(str) * 2 + 128;
+	ret = xmalloc(len);
+	for (i = 0, o = 0; str[i]; ++i) {
+		if (o >= MAX_STR_LEN) {
+			break;
+		} else if ((o + 8) >= len) {
+			len *= 2;
+			ret = xrealloc(ret, len);
+		}
 		switch (str[i]) {
-			case '\\':
-				xstrcat(ret, "\\\\");
-				break;
-			case '"':
-				xstrcat(ret, "\\\"");
-				break;
-			case '\n':
-				xstrcat(ret, "\\n");
-				break;
-			case '\b':
-				xstrcat(ret, "\\b");
-				break;
-			case '\f':
-				xstrcat(ret, "\\f");
-				break;
-			case '\r':
-				xstrcat(ret, "\\r");
-				break;
-			case '\t':
-				xstrcat(ret, "\\t");
-				break;
-			case '<':
-				xstrcat(ret, "\\u003C");
-				break;
-			default:
-				xstrcatchar(ret, str[i]);
+		case '\\':
+			ret[o++] = '\\';
+			ret[o++] = '\\';
+			break;
+		case '"':
+			ret[o++] = '\\';
+			ret[o++] = '\"';
+			break;
+		case '\n':
+			ret[o++] = '\\';
+			ret[o++] = 'n';
+			break;
+		case '\b':
+			ret[o++] = '\\';
+			ret[o++] = 'b';
+			break;
+		case '\f':
+			ret[o++] = '\\';
+			ret[o++] = 'f';
+			break;
+		case '\r':
+			ret[o++] = '\\';
+			ret[o++] = 'r';
+			break;
+		case '\t':
+			ret[o++] = '\\';
+			ret[o++] = 't';
+			break;
+		case '<':
+			ret[o++] = '\\';
+			ret[o++] = 'u';
+			ret[o++] = '0';
+			ret[o++] = '0';
+			ret[o++] = '3';
+			ret[o++] = 'C';
+			break;
+		case '/':
+			ret[o++] = '\\';
+			ret[o++] = '/';
+			break;
+		default:
+			ret[o++] = str[i];
 		}
 	}
 	return ret;
@@ -151,6 +182,24 @@ char *cli_gen_json(uint32_t jobid, void *data, int client_id) {
 	}
 	xstrcat(json, "}");
 	return json;
+}
+
+char *cli_gen_env_json(void)
+{
+	char **ptr = NULL;
+	char *tmp = xmalloc(4096);
+	char *ret = NULL;
+	tmp[0] = '\0';
+	for (ptr = environ; ptr && *ptr; ptr++) {
+		if (!strncmp(*ptr, "SLURM_", 6))
+			continue;
+		if (!strncmp(*ptr, "SPANK_", 6))
+			continue;
+		xstrfmtcat(tmp, "%s|", *ptr);
+	}
+	ret = _json_escape(tmp);
+	xfree(tmp);
+	return ret;
 }
 
 

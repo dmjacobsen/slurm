@@ -68,6 +68,7 @@ char *cli_si_get(const char *, void *, int client_type);
 bool cli_si_set(const char *, const char *, void *, int client_type);
 
 char *cli_gen_json(uint32_t jobid, void *, int client_type);
+char *cli_gen_env_json(void);
 
 char *cli_si_get_string(void *, const cli_string_option_t *, int);
 bool cli_si_set_string(const char *, void *, const cli_string_option_t *, int);
