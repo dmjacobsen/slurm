@@ -511,6 +511,13 @@ extern int power_job_reboot(struct job_record *job_ptr)
 	return rc;
 }
 
+extern int power_serverside_reboot(char *nodelist)
+{
+	pid_t pid;
+	pid = _run_prog(resume_prog, nodelist, NULL, 0);
+	return SLURM_SUCCESS;
+}
+
 /* If slurmctld crashes, the node state that it recovers could differ
  * from the actual hardware state (e.g. ResumeProgram failed to complete).
  * To address that, when a node that should be powered up for a running
