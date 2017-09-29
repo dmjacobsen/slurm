@@ -61,6 +61,6 @@ extern bool power_save_test(void);
 extern int power_job_reboot(char *);
 
 /* power_serverside_reboot - Reboot compute nodes from the head node */
-extern int power_serverside_reboot(hostlist_t hostlist_ptr);
+extern int power_serverside_reboot(char *nodelist);
 
 #endif /* _HAVE_POWER_SAVE_H */
