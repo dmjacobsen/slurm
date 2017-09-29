@@ -649,8 +649,10 @@ static int _reboot_nodes(char *node_list, bool asap)
 	reboot_msg_t req;
 
 	conf = slurm_conf_lock();
-	if (conf->reboot_program == NULL) {
-		error("RebootProgram isn't defined");
+	if (conf->reboot_program == NULL ||
+	   (conf->reboot_nodes_serverside && conf->resume_program))
+	{
+		error("RebootProgram or ResumeProgram+RebootNodesServerSide aren't defined");
 		slurm_conf_unlock();
 		slurm_seterrno(SLURM_ERROR);
 		return SLURM_ERROR;
