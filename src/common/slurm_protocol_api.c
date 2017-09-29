@@ -510,6 +510,25 @@ char *slurm_get_msg_aggr_params(void)
 	return msg_aggr_params;
 }
 
+/* slurm_get_reboot_nodes_serverside
+ * RET bool - RebootNodesServerside from slurm.conf
+ */
+extern bool slurm_get_reboot_nodes_serverside(void)
+{
+	bool factor = 0;
+	slurm_ctl_conf_t *conf;
+
+	if (slurmdbd_conf) {
+	} else {
+		conf = slurm_conf_lock();
+		factor = conf->reboot_nodes_serverside;
+		slurm_conf_unlock();
+	}
+
+	return factor;
+}
+
+
 /* slurm_get_reboot_program
  * RET char * - RebootProgram from slurm.conf, MUST be xfreed by caller
  */
