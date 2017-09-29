@@ -3955,7 +3955,7 @@ _validate_and_set_defaults(slurm_ctl_conf_t *conf, s_p_hashtbl_t *hashtbl)
 	if (!s_p_get_uint16(&conf->resume_timeout, "ResumeTimeout", hashtbl))
 		conf->resume_timeout = DEFAULT_RESUME_TIMEOUT;
 
-	if (s_p_get_boolean(&truth, "RebootNodesServerSide", hashtbl) && truth))
+	if (s_p_get_boolean(&truth, "RebootNodesServerSide", hashtbl) && truth)
 		conf->reboot_nodes_server_side = 1;
 	else
 		conf->reboot_nodes_server_side = 0;
