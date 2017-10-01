@@ -3959,6 +3959,7 @@ _validate_and_set_defaults(slurm_ctl_conf_t *conf, s_p_hashtbl_t *hashtbl)
 		conf->reboot_nodes_serverside = 1;
 	else
 		conf->reboot_nodes_serverside = 0;
+
 	(void) s_p_get_string(&conf->reboot_program, "RebootProgram", hashtbl);
 
 	if (!s_p_get_string(&conf->route_plugin, "RoutePlugin", hashtbl))
