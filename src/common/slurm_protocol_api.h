@@ -213,10 +213,10 @@ char *slurm_get_msg_aggr_params(void);
  */
 extern uint16_t slurm_get_msg_timeout(void);
 
-/* slurm_get_reboot_nodes_serverside
- * RET bool - RebootNodesServerside from slurm.conf
+/* slurm_get_reboot_using_powersave
+ * RET uint16_t - RebootUsingPowersave from slurm.conf
  */
-extern bool slurm_get_reboot_nodes_serverside(void);
+extern uint16_t slurm_get_reboot_using_powersave(void);
 
 /* slurm_get_reboot_program
  * RET char * - RebootProgram from slurm.conf, MUST be xfreed by caller

@@ -1319,8 +1319,8 @@ extern void *slurm_ctl_conf_2_key_pairs (slurm_ctl_conf_t* slurm_ctl_conf_ptr)
 	list_append(ret_list, key_pair);
 
 	key_pair = xmalloc(sizeof(config_key_pair_t));
-	key_pair->name = xstrdup("RebootNodesServerSide");
-	if (slurm_ctl_conf_ptr->reboot_nodes_serverside)
+	key_pair->name = xstrdup("RebootUsingPowerSave");
+	if (slurm_ctl_conf_ptr->reboot_using_powersave)
 		key_pair->value = xstrdup("Yes");
 	else
 		key_pair->value = xstrdup("No");

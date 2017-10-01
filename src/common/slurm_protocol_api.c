@@ -510,18 +510,18 @@ char *slurm_get_msg_aggr_params(void)
 	return msg_aggr_params;
 }
 
-/* slurm_get_reboot_nodes_serverside
- * RET bool - RebootNodesServerside from slurm.conf
+/* slurm_get_reboot_using_powersave
+ * RET uint16_t - RebootUsingPowerSave from slurm.conf
  */
-extern bool slurm_get_reboot_nodes_serverside(void)
+extern uint16_t slurm_get_reboot_using_powersave(void)
 {
-	bool factor = 0;
+	uint16_t factor = 0;
 	slurm_ctl_conf_t *conf;
 
 	if (slurmdbd_conf) {
 	} else {
 		conf = slurm_conf_lock();
-		factor = conf->reboot_nodes_serverside;
+		factor = conf->reboot_using_powersave;
 		slurm_conf_unlock();
 	}
 

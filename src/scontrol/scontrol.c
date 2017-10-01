@@ -682,9 +682,9 @@ static int _reboot_nodes(char *node_list, bool asap)
 
 	conf = slurm_conf_lock();
 	if (conf->reboot_program == NULL &&
-	   (conf->reboot_nodes_serverside == 0 || conf->resume_program == NULL))
+	   (conf->reboot_using_powersave == 0 || conf->resume_program == NULL))
 	{
-		error("RebootProgram or ResumeProgram+RebootNodesServerSide aren't defined");
+		error("RebootProgram or ResumeProgram+RebootUsingPowerSave aren't defined");
 		slurm_conf_unlock();
 		slurm_seterrno(SLURM_ERROR);
 		return SLURM_ERROR;
