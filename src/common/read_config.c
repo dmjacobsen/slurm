@@ -292,8 +292,8 @@ s_p_options_t slurm_conf_options[] = {
 	{"PropagatePrioProcess", S_P_UINT16},
 	{"PropagateResourceLimitsExcept", S_P_STRING},
 	{"PropagateResourceLimits", S_P_STRING},
-	{"RebootNodesServerSide", S_P_BOOLEAN},
 	{"RebootProgram", S_P_STRING},
+	{"RebootUsingPowerSave", S_P_BOOLEAN},
 	{"ReconfigFlags", S_P_STRING},
 	{"RequeueExit", S_P_STRING},
 	{"RequeueExitHold", S_P_STRING},
@@ -3955,12 +3955,12 @@ _validate_and_set_defaults(slurm_ctl_conf_t *conf, s_p_hashtbl_t *hashtbl)
 	if (!s_p_get_uint16(&conf->resume_timeout, "ResumeTimeout", hashtbl))
 		conf->resume_timeout = DEFAULT_RESUME_TIMEOUT;
 
-	if (s_p_get_boolean(&truth, "RebootNodesServerSide", hashtbl) && truth)
-		conf->reboot_nodes_serverside = 1;
-	else
-		conf->reboot_nodes_serverside = 0;
-
 	(void) s_p_get_string(&conf->reboot_program, "RebootProgram", hashtbl);
+
+	if (s_p_get_boolean(&truth, "RebootUsingPowerSave", hashtbl) && truth)
+		conf->reboot_using_powersave = 1;
+	else
+		conf->reboot_using_powersave = 0;
 
 	if (!s_p_get_string(&conf->route_plugin, "RoutePlugin", hashtbl))
 		conf->route_plugin = xstrdup(DEFAULT_ROUTE_PLUGIN);
