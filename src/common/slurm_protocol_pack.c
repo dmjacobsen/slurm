@@ -6648,6 +6648,7 @@ _pack_slurm_ctl_conf_msg(slurm_ctl_conf_info_msg_t * build_ptr, Buf buffer,
 		packstr(build_ptr->propagate_rlimits_except, buffer);
 
 		packstr(build_ptr->reboot_program, buffer);
+		pack16(build_ptr->reboot_using_powersave, buffer);
 		pack16(build_ptr->reconfig_flags, buffer);
 		packstr(build_ptr->requeue_exit, buffer);
 		packstr(build_ptr->requeue_exit_hold, buffer);
@@ -7594,6 +7595,7 @@ _unpack_slurm_ctl_conf_msg(slurm_ctl_conf_info_msg_t **build_buffer_ptr,
 
 		safe_unpackstr_xmalloc(&build_ptr->reboot_program, &uint32_tmp,
 				       buffer);
+		safe_unpack16(&build_ptr->reboot_using_powersave, buffer);
 		safe_unpack16(&build_ptr->reconfig_flags, buffer);
 
 		safe_unpackstr_xmalloc(&build_ptr->requeue_exit,
