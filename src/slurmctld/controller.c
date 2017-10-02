@@ -1542,7 +1542,6 @@ static void _update_cluster_tres(void)
 	unlock_slurmctld(job_write_lock);
 }
 
-
 static void _queue_reboot_msg(void)
 {
 	agent_arg_t *reboot_agent_args = NULL;
@@ -1614,8 +1613,14 @@ static void _queue_reboot_msg(void)
 		host_str = hostlist_ranged_string_xmalloc(
 				reboot_agent_args->hostlist);
 		debug("Queuing reboot request for nodes %s", host_str);
+		if (power_save_test()) {
+			power_serverside_reboot(host_str);
+			hostlist_destroy(reboot_agent_args->hostlist);
+			xfree(reboot_agent_args);
+		} else {
+			agent_queue_request(reboot_agent_args);
+		}
 		xfree(host_str);
-		agent_queue_request(reboot_agent_args);
 		last_node_update = now;
 		schedule_node_save();
 	}

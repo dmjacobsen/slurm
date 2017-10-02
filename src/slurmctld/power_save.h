@@ -58,6 +58,9 @@ extern void start_power_mgr(pthread_t *thread_id);
 extern bool power_save_test(void);
 
 /* power_job_reboot - Reboot compute nodes for a job from the head node */
-extern int power_job_reboot(struct job_record *job_ptr);
+extern int power_job_reboot(struct job_record *);
+
+/* power_serverside_reboot - Reboot compute nodes from the head node */
+extern int power_serverside_reboot(char *nodelist);
 
 #endif /* _HAVE_POWER_SAVE_H */

@@ -511,6 +511,55 @@ extern int power_job_reboot(struct job_record *job_ptr)
 	return rc;
 }
 
+extern int power_serverside_reboot(char *nodelist)
+{
+	int rc = SLURM_SUCCESS;
+	int i, i_first, i_last;
+	struct node_record *node_ptr;
+	bitstr_t *boot_node_bitmap = NULL;
+	time_t now = time(NULL);
+	pid_t pid;
+
+	if (!power_save_enabled) {
+		rc = SLURM_ERROR;
+		error("Cannot reboot nodelist: %s, power_save not enabled",
+			nodelist);
+		goto term;
+	}
+
+	rc = node_name2bitmap(nodelist, false, &boot_node_bitmap);
+	if (rc != SLURM_SUCCESS)
+		goto term;
+
+	i_first = bit_ffs(boot_node_bitmap);
+	if (i_first >= 0)
+		i_last = bit_fls(boot_node_bitmap);
+	else
+		i_last = i_first - 1;
+	for (i = i_first; i <= i_last; i++) {
+		if (!bit_test(boot_node_bitmap, i))
+			continue;
+		node_ptr = node_record_table_ptr + i;
+		resume_cnt++;
+		resume_cnt_f++;
+		node_ptr->node_state &= (~NODE_STATE_POWER_SAVE);
+		node_ptr->node_state |=   NODE_STATE_POWER_UP;
+		node_ptr->node_state |=   NODE_STATE_NO_RESPOND;
+		bit_clear(power_node_bitmap, i);
+		bit_clear(avail_node_bitmap, i);
+		node_ptr->boot_req_time = now;
+		node_ptr->last_response = now + resume_timeout;
+		bit_set(booting_node_bitmap, i);
+		bit_set(resume_node_bitmap,  i);
+	}
+	pid = _run_prog(resume_prog, nodelist, NULL, 0);
+	last_node_update = now;
+
+term:
+	FREE_NULL_BITMAP(boot_node_bitmap);
+	return rc;
+}
+
 /* If slurmctld crashes, the node state that it recovers could differ
  * from the actual hardware state (e.g. ResumeProgram failed to complete).
  * To address that, when a node that should be powered up for a running
