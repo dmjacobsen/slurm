@@ -2579,7 +2579,7 @@ extern int validate_node_specs(slurm_node_registration_status_msg_t *reg_msg,
 		info("Node %s now responding", node_ptr->name);
 		node_ptr->node_state &= (~NODE_STATE_NO_RESPOND);
 		node_ptr->node_state &= (~NODE_STATE_POWER_UP);
-		node_ptr->node_state &= (~NODE_STATE_REBOOT);
+		//node_ptr->node_state &= (~NODE_STATE_REBOOT); /* leave REBOOT flag in place */
 		if (!is_node_in_maint_reservation(node_inx))
 			node_ptr->node_state &= (~NODE_STATE_MAINT);
 		last_node_update = now;
