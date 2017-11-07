@@ -12,6 +12,8 @@ endif
 
 if HAVE_REAL_CRAY
 noinst_DATA = opt_modulefiles_slurm
+smw_xtconsumer_slurm_helperd_SOURCES = smw_xtconsumer_slurm_helperd.c
+smw_xtconsumer_slurm_helperd_LDADD = $(top_builddir)/src/api/libslurm.o $(DL_LIBS)
 endif
 
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/src/common $(JSON_CPPFLAGS)
