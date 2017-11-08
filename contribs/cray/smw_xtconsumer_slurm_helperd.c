@@ -9,24 +9,41 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <pthread.h>
+#include <ctype.h>
+#include <signal.h>
 #include <sys/time.h>
 
 #include "slurm/slurm.h"
+#include "src/common/slurm_xlator.h"
 #include "src/common/macros.h"
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
+#include "src/common/slurm_protocol_defs.h"
+
+/*temp until config */
+#define SYSTEM_CABINETS_PER_ROW 12
 
 static int stop_running = 0;
 static pthread_mutex_t down_node_lock;
 static int *down_node;
 static size_t n_down_node;
 static size_t down_node_sz;
+static const char *event_description[] = {
+	"Invalid Event",
+	"ec_node_failed",
+	"ec_node_unavailable"
+};
 
 typedef enum event_type {
 	EVENT_INVALID = 0,
 	EVENT_NODE_FAILED,
 	EVENT_NODE_UNAVAILABLE
 } event_type_t;
+
+void shutdown_signal_handler(int signal) {
+	stop_running = 1;
+}
 
 int getnid(const char *cname, int dim) {
         int cabinet, row, chassis, slot, node;
@@ -45,25 +62,25 @@ char *getnidlist() {
 	size_t idx = 0;
 	int last_nid = 0;
 	int in_range = 0;
-	snprintf(ret, ret_sz, "nid[");
-	for (idx = 0; idx < n_nodes_down; idx++) {
-		int curr_nid = nodes_down[idx];
+	ret = xstrdup("nid[");
+	for (idx = 0; idx < n_down_node; idx++) {
+		int curr_nid = down_node[idx];
 		if (last_nid == 0) {
-			xstrfmtcat(&ret, "%05d", curr_nid);
+			xstrfmtcat(ret, "%05d", curr_nid);
 		} else if (curr_nid - last_nid > 1) {
 			if (in_range) {
-				xstrfmtcat(&ret, "-%05d", last_nid);
+				xstrfmtcat(ret, "-%05d", last_nid);
 			}
-			xstrfmtcat(&ret, ",%05d", curr_nid);
+			xstrfmtcat(ret, ",%05d", curr_nid);
 			in_range = 0;
-		} else if (idx == n_nodes_down - 1) {
-			xstrfmtcat(&ret, "-%05d", curr_nid);
+		} else if (idx == n_down_node - 1) {
+			xstrfmtcat(ret, "-%05d", curr_nid);
 		} else {
 			in_range = 1;
 		}
 		last_nid = curr_nid;
 	}
-	xstrfmtcat(&ret, "]");
+	xstrfmtcat(ret, "]");
 	return ret;
 }
 
@@ -77,7 +94,7 @@ int _mark_nodes_down() {
 	update_msg->node_names = getnidlist();
 	update_msg->node_state = NODE_STATE_NO_RESPOND;
 
-	info("smw_xtconsumer_slurm_helperd: setting %s to NORESP", nodelist);
+	slurm_info("setting %s to NORESP", update_msg->node_names);
 
 	rc = slurm_update_node(update_msg);
 
@@ -87,16 +104,18 @@ int _mark_nodes_down() {
 }
 
 void *process_data(void *arg) {
-	while (1) {
+	while (!stop_running) {
 		slurm_mutex_lock(&down_node_lock);
-		if (n_down_nodes > 0) {
+		if (n_down_node > 0) {
+			slurm_info("down node cnt: %lu", n_down_node);
 			_mark_nodes_down();
-			n_down_nodes = 0;
+			n_down_node = 0;
 		}
 		slurm_mutex_unlock(&down_node_lock);
 		usleep(2000000);
 
 	}
+	return NULL;
 }
 
 event_type_t _parse_event(const char *input) {
@@ -107,24 +126,45 @@ event_type_t _parse_event(const char *input) {
 	return EVENT_INVALID;
 }
 
-int _cmp_nid(void *a, void *b, void *arg) {
-	int ai = * (int *) a;
-	int bi = * (int *) b;
+int _cmp_nid(const void *a, const void *b, void *arg) {
+	int ai = * (const int *) a;
+	int bi = * (const int *) b;
 	return ai - bi;
 }
 
-void _send_failed_nodes(const char *nodelist) {
+char *_trim(char *str) {
+    char *ptr = str;
+    ssize_t len = 0;
+    if (str == NULL) return NULL;
+    for ( ; isspace(*ptr) && *ptr != 0; ptr++) {
+        /* that's it */
+    }
+    if (*ptr == 0) return ptr;
+    len = strlen(ptr) - 1;
+    for ( ; isspace(*(ptr + len)) && len > 0; len--) {
+        *(ptr + len) = 0;
+    }
+    return ptr;
+}
+
+void _send_failed_nodes(char *nodelist) {
 	char *search = nodelist;
 	char *svptr = NULL;
 	char *ptr = NULL;
 	int nid = 0;
 	slurm_mutex_lock(&down_node_lock);
 	while ((ptr = strtok_r(search, " ", &svptr)) != NULL) {
+		search = NULL;
 		while (*ptr == ':')
 			ptr++;
+		ptr = _trim(ptr);
+		if (strlen(ptr) == 0)
+			continue;
 		nid = getnid(ptr, SYSTEM_CABINETS_PER_ROW);
-		while (n_down_node + 1 >= down_node_sz) {
-			size_t alloc_quantity = (down_node_sz + 4) * 2;
+		if (nid == 0)
+			continue;
+		if (n_down_node + 1 >= down_node_sz) {
+			size_t alloc_quantity = (n_down_node + 1) * 2;
 			size_t alloc_size = sizeof(int) * alloc_quantity;
 			down_node = xrealloc(down_node, alloc_size);
 			down_node_sz = alloc_quantity;
@@ -159,7 +199,7 @@ void *xtconsumer_listen(void *arg) {
 	 * setting line buffering on our half of the pipe is probably useless
 	 */
 	setlinebuf(fp);
-	while (!feof(fp) && !ferror(fp)) {
+	while (!stop_running && !feof(fp) && !ferror(fp)) {
 		/* using _GNU_SOURCE getline because xtconsumer linelength may be HUGE, and I
 		 * prefer not to screw around with fgets and extra buffer content joining for
 		 * now
@@ -184,11 +224,12 @@ void *xtconsumer_listen(void *arg) {
 
 			token_idx++;
 		}
-		if (event_type == EVENT_INVALID)
+		slurm_info("received event: %s, nodelist: %s", event_description[event], node_list);
+		if (event == EVENT_INVALID)
 			goto cleanup_continue;
 
-		if (event_type == EVENT_NODE_FAILED ||
-		    event_type == EVENT_NODE_UNAVAILABLE) {
+		if (event == EVENT_NODE_FAILED ||
+		    event == EVENT_NODE_UNAVAILABLE) {
 			_send_failed_nodes(node_list);
 		}
 
@@ -198,10 +239,12 @@ cleanup_continue:
 			node_list = NULL;
 		}
 		continue;
+#if 0
 cleanup_break:
 		if (node_list)
 			xfree(node_list);
 		break;
+#endif
 	}
 	pclose(fp);
 	if (line != NULL) {
@@ -214,16 +257,21 @@ cleanup_break:
 
 int main(int argc, char **argv) {
 	pthread_t xtc_thread, processing_thread;
+
+	signal(SIGINT, shutdown_signal_handler);
+	signal(SIGTERM, shutdown_signal_handler);
+	signal(SIGHUP, shutdown_signal_handler);
+	
 	slurm_mutex_init(&down_node_lock);
 
 	pthread_create(&processing_thread, NULL, &process_data, NULL);
 
-	for ( ; ; ) {
+	while (!stop_running) {
 		pthread_create(&xtc_thread, NULL, &xtconsumer_listen, NULL);
 		pthread_join(xtc_thread, NULL);
 	}
 
 	pthread_join(processing_thread, NULL);
-	_mutex_destroy(&down_node_lock);
+	slurm_mutex_destroy(&down_node_lock);
 	return 0;
 }

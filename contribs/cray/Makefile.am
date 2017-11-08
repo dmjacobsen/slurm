@@ -5,22 +5,24 @@
 SUBDIRS = csm
 
 AUTOMAKE_OPTIONS = foreign
+sbin_PROGRAMS = smw_xtconsumer_slurm_helperd
 
 if HAVE_NATIVE_CRAY
 sbin_SCRIPTS = slurmconfgen.py
 endif
 
-if HAVE_REAL_CRAY
-noinst_DATA = opt_modulefiles_slurm
 smw_xtconsumer_slurm_helperd_SOURCES = smw_xtconsumer_slurm_helperd.c
 smw_xtconsumer_slurm_helperd_LDADD = $(top_builddir)/src/api/libslurm.o $(DL_LIBS)
+
+if HAVE_REAL_CRAY
+noinst_DATA = opt_modulefiles_slurm
 endif
 
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/src/common $(JSON_CPPFLAGS)
 
 if WITH_JSON_PARSER
 convenience_libs = $(top_builddir)/src/api/libslurm.o $(DL_LIBS)
-sbin_PROGRAMS = capmc_suspend capmc_resume
+sbin_PROGRAMS += capmc_suspend capmc_resume
 capmc_suspend_SOURCES  = capmc_suspend.c
 capmc_suspend_LDADD    = $(convenience_libs)
 capmc_suspend_LDFLAGS  = -export-dynamic $(JSON_LDFLAGS)
