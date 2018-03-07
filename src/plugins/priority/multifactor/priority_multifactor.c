@@ -429,6 +429,28 @@ static int _set_children_usage_efctv(List children_list)
 }
 
 
+/* assume that same association mgr locks from _get_fairshare_priority are
+ * already held.
+ * given an association, return the current un-weighted fairshare score
+ */
+extern double priority_p_get_assoc_fairshare(slurmdb_assoc_rec_t *job_assoc)
+{
+	slurmdb_assoc_rec_t *fs_assoc = NULL;
+
+	if (!job_assoc)
+		return 0;
+
+	if (job_assoc->shares_raw == SLURMDB_FS_USE_PARENT)
+		fs_assoc = job_assoc->usage->fs_assoc_ptr;
+	else
+		fs_assoc = job_assoc;
+
+	if (flags & PRIORITY_FLAGS_FAIR_TREE)
+		return job_assoc->usage->fs_factor;
+	return priority_p_calc_fs_factor(fs_assoc->usage->usage_efctv,
+			(long double) fs_assoc->usage->shares_norm);
+}
+
 /* job_ptr should already have the partition priority and such added here
  * before had we will be adding to it
  */

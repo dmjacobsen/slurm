@@ -106,6 +106,13 @@ typedef struct epilog_arg {
 	char **my_env;
 } epilog_arg_t;
 
+typedef struct assoc_fs_data {
+	slurmdb_assoc_rec_t **assoc_ptrs;
+	double *fs;
+	int n;
+	int capacity;
+} assoc_fs_data_t;
+
 static char **	_build_env(struct job_record *job_ptr, bool is_epilog);
 static batch_job_launch_msg_t *_build_launch_job_msg(struct job_record *job_ptr,
 						     uint16_t protocol_version);
@@ -126,6 +133,8 @@ static int	_schedule(uint32_t job_limit);
 static int	_valid_feature_list(struct job_record *job_ptr,
 				    List feature_list);
 static int	_valid_node_feature(char *feature, bool can_reboot);
+static double	_get_assoc_fs(slurmdb_assoc_rec_t *, assoc_fs_data_t *);
+static void	_free_assoc_fs_data();
 #ifndef HAVE_FRONT_END
 static void *	_wait_boot(void *arg);
 #endif
@@ -137,6 +146,13 @@ static int sched_pend_thread = 0;
 static bool sched_running = false;
 static struct timeval sched_last = {0, 0};
 static uint32_t max_array_size = NO_VAL;
+static slurmdb_assoc_rec_t **assoc_fs_ptrs = NULL;
+static double *assoc_fs_values = NULL;
+static int n_assoc_fs = 0;
+static int capacity_assoc_fs = 0;
+static assoc_fs_data_t assoc_fs_data;
+static bool jobsort_bias_fairshare = false;
+
 #ifdef HAVE_ALPS_CRAY
 static int sched_min_interval = 1000000;
 #else
@@ -1415,6 +1431,13 @@ static int _schedule(uint32_t job_limit)
 			sched_max_job_start = 0;
 		}
 
+
+		if (sched_params &&
+		    (strstr(sched_params, "jobsort_bias_fairshare")))
+			jobsort_bias_fairshare = true;
+		else
+			jobsort_bias_fairshare = false;
+
 		xfree(sched_params);
 		sched_update = slurmctld_conf.last_update;
 		info("SchedulerParameters=default_queue_depth=%d,"
@@ -2163,13 +2186,60 @@ out:
 	return job_cnt;
 }
 
+static double _get_assoc_fs(slurmdb_assoc_rec_t *assoc)
+{
+	int idx = 0;
+	double value = 0;
+	assoc_fs_data_t *data = &assoc_fs_data;
+	for (idx = 0; idx < data->n; idx++)
+		if (data->assoc_ptrs[idx] == assoc)
+			return data->fs[idx];
+
+	value = priority_g_get_assoc_fairshare(assoc);
+	if (data->n + 1 >= data->capacity) {
+		int sz = data->n == 0 ? 512 : data->n * 2;
+		xrealloc(data->assoc_ptrs, sizeof(slurmdb_assoc_rec_t *) * sz);
+		xrealloc(data->fs, sizeof(double) * sz);
+		data->capacity = sz;
+	}
+	data->assoc_ptrs[data->n] = assoc;
+	data->fs[data->n] = value;
+	data->n++;
+	return value;
+}
+
+static void _free_assoc_fs_data()
+{
+	xfree(assoc_fs_data.assoc_ptrs);
+	xfree(assoc_fs_data.fs);
+	assoc_fs_data.fs = NULL;
+	assoc_fs_data.assoc_ptrs = NULL;
+	assoc_fs_data.capacity = 0;
+	assoc_fs_data.n = 0;
+}
+
+
 /*
  * sort_job_queue - sort job_queue in descending priority order
  * IN/OUT job_queue - sorted job queue
  */
 extern void sort_job_queue(List job_queue)
 {
+	assoc_mgr_lock_t locks = { READ_LOCK, NO_LOCK, NO_LOCK, NO_LOCK,
+				   NO_LOCK, NO_LOCK, NO_LOCK };
+	bool locked = false;
+
+
+	if (jobsort_bias_fairshare) {
+		assoc_mgr_lock(&locks);
+		_free_assoc_fs_data();
+		locked = true;
+	}
+
 	list_sort(job_queue, sort_job_queue2);
+
+	if (locked)
+		assoc_mgr_unlock(&locks);
 }
 
 /* Note this differs from the ListCmpF typedef since we want jobs sorted
@@ -2184,6 +2254,8 @@ extern int sort_job_queue2(void *x, void *y)
 	static bool preemption_enabled = true;
 	uint32_t job_id1, job_id2;
 	uint32_t p1, p2;
+	double fs1, fs2;
+	int idx = 0;
 
 	/* The following block of code is designed to minimize run time in
 	 * typical configurations for this frequently executed function. */
@@ -2232,6 +2304,15 @@ extern int sort_job_queue2(void *x, void *y)
 		return 1;
 	if (p1 > p2)
 		return -1;
+
+	if (jobsort_bias_fairshare) {
+		fs1 =  _get_assoc_fs(job_rec1->job_ptr->assoc_ptr);
+		fs2 =  _get_assoc_fs(job_rec2->job_ptr->assoc_ptr);
+		if (fs1 < fs2)
+			return 1;
+		if (fs1 > fs2)
+			return -1;
+	}
 
 	/* If the priorities are the same sort by submission time */
 	if (job_rec1->job_ptr->details && job_rec2->job_ptr->details) {
