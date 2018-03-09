@@ -147,7 +147,7 @@ extern void priority_g_set_assoc_usage(slurmdb_assoc_rec_t *assoc)
 	return;
 }
 
-extern double priority_p_get_assoc_fairshare(slurmdb_assoc_rec_t *assoc)
+extern double priority_g_get_assoc_fairshare(slurmdb_assoc_rec_t *assoc)
 {
 	if (slurm_priority_init() < 0)
 		return 0.0;
