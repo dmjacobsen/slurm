@@ -2192,7 +2192,7 @@ static double _get_assoc_fs(slurmdb_assoc_rec_t *assoc)
 		if (data->assoc_ptrs[idx] == assoc)
 			return data->fs[idx];
 
-	value = priority_p_get_assoc_fairshare(assoc);
+	value = priority_g_get_assoc_fairshare(assoc);
 	if (data->n + 1 >= data->capacity) {
 		int sz = data->n == 0 ? 512 : data->n * 2;
 		xrealloc(data->assoc_ptrs, sizeof(slurmdb_assoc_rec_t *) * sz);
