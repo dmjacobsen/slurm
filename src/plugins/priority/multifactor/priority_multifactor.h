@@ -51,7 +51,7 @@
 
 #include "src/slurmctld/locks.h"
 extern void priority_p_set_assoc_usage(slurmdb_assoc_rec_t *assoc);
-extern void priority_p_get_assoc_fairshare(slurmdb_assoc_rec_t *assoc);
+extern double priority_p_get_assoc_fairshare(slurmdb_assoc_rec_t *assoc);
 extern double priority_p_calc_fs_factor(
 		long double usage_efctv, long double shares_norm);
 extern bool decay_apply_new_usage(
