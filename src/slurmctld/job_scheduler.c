@@ -66,6 +66,7 @@
 #include "src/common/power.h"
 #include "src/common/slurm_accounting_storage.h"
 #include "src/common/slurm_acct_gather.h"
+#include "src/common/slurm_priority.h"
 #include "src/common/strlcpy.h"
 #include "src/common/parse_time.h"
 #include "src/common/timers.h"
@@ -133,7 +134,7 @@ static int	_schedule(uint32_t job_limit);
 static int	_valid_feature_list(struct job_record *job_ptr,
 				    List feature_list);
 static int	_valid_node_feature(char *feature, bool can_reboot);
-static double	_get_assoc_fs(slurmdb_assoc_rec_t *, assoc_fs_data_t *);
+static double	_get_assoc_fs(slurmdb_assoc_rec_t *);
 static void	_free_assoc_fs_data();
 #ifndef HAVE_FRONT_END
 static void *	_wait_boot(void *arg);
@@ -146,10 +147,6 @@ static int sched_pend_thread = 0;
 static bool sched_running = false;
 static struct timeval sched_last = {0, 0};
 static uint32_t max_array_size = NO_VAL;
-static slurmdb_assoc_rec_t **assoc_fs_ptrs = NULL;
-static double *assoc_fs_values = NULL;
-static int n_assoc_fs = 0;
-static int capacity_assoc_fs = 0;
 static assoc_fs_data_t assoc_fs_data;
 static bool jobsort_bias_fairshare = false;
 
@@ -2255,7 +2252,6 @@ extern int sort_job_queue2(void *x, void *y)
 	uint32_t job_id1, job_id2;
 	uint32_t p1, p2;
 	double fs1, fs2;
-	int idx = 0;
 
 	/* The following block of code is designed to minimize run time in
 	 * typical configurations for this frequently executed function. */
