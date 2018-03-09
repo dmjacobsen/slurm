@@ -46,7 +46,7 @@ typedef struct slurm_priority_ops {
 				    struct job_record *job_ptr);
 	void     (*reconfig)       (bool assoc_clear);
 	void     (*set_assoc_usage)(slurmdb_assoc_rec_t *assoc);
-	void	 (*get_assoc_fairshare)(slurmdb_assoc_rec_t *assoc);
+	double	 (*get_assoc_fairshare)(slurmdb_assoc_rec_t *assoc);
 	double   (*calc_fs_factor) (long double usage_efctv,
 				    long double shares_norm);
 	List	 (*get_priority_factors)
