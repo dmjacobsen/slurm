@@ -150,9 +150,9 @@ extern void priority_g_set_assoc_usage(slurmdb_assoc_rec_t *assoc)
 extern double priority_p_get_assoc_fairshare(slurmdb_assoc_rec_t *assoc)
 {
 	if (slurm_priority_init() < 0)
-		return;
+		return 0.0;
 
-	return (*ops.get_assoc_fairshare))(assoc);
+	return (*(ops.get_assoc_fairshare))(assoc);
 }
 
 extern double priority_g_calc_fs_factor(long double usage_efctv,
