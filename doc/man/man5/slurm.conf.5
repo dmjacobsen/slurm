@@ -2790,6 +2790,12 @@ performance dramatically, but in the situation where a node changes state the
 window is as large as this setting.  In an HTC environment this setting is a
 must and we advise around 10 seconds.
 .TP
+\fBjobsort_bias_fairshare\fR
+Consider association adjusted fairshare when comparing jobs of equal overall
+priority when sorting jobs for consideration for scheduling. This is intended
+to be used with bf_min_prio_resv and a priority scheme where many jobs have
+equal priority below bf_min_prio_resv.
+.TP
 \fBkill_invalid_depend\fR
 If a job has an invalid dependency and it can never run terminate it
 and set its state to be JOB_CANCELLED. By default the job stays pending
