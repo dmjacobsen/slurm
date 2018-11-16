@@ -53,20 +53,6 @@
 #include "src/common/slurmdb_defs.h"
 #include "src/common/slurm_opt.h"
 
-typedef struct sbatch_env_opts {
-	uint32_t cpus_per_task;
-	char *   dist;
-	char *   dist_lllp;
-	char *   mem_bind;
-	char *   mem_bind_sort;
-	char *   mem_bind_verbose;
-	uint32_t ntasks;
-	uint32_t ntasks_per_core;
-	uint32_t ntasks_per_node;
-	uint32_t ntasks_per_socket;
-	uint32_t plane_size;
-} sbatch_env_t;
-
 extern slurm_opt_t opt;
 extern sbatch_opt_t sbopt;
 extern sbatch_env_t pack_env;
