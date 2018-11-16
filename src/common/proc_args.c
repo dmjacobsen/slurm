@@ -68,6 +68,9 @@
 #include "src/common/proc_args.h"
 #include "src/common/slurm_protocol_api.h"
 #include "src/common/slurm_acct_gather_profile.h"
+#include "src/common/uid.h"
+#include "src/common/util-net.h"
+#include "src/common/x11_util.h"
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 
@@ -2577,13 +2580,13 @@ extern int arg_set_mem_bind(slurm_opt_t *opt, const char *arg, const char *label
 		/* TODO only srun does this at present */
 		xfree(opt->mem_bind);
 	}
-	if (slurm_verify_mem_bind(arg, &opt->mem_bind, &opt->mem_bind_type))
+	if (slurm_verify_mem_bind(arg, &opt->mem_bind, &opt->mem_bind_type, is_fatal))
 		return _arg_set_error(label, "invalid argument", arg, is_fatal);
 
 	return SLURM_SUCCESS;
 }
 
-extern int arg_set_mem_per_cpu_mb(slurm_opt_t *opt, int64_t mbytes, const char *label) {
+extern int arg_set_mem_per_cpu_mb(slurm_opt_t *opt, int64_t mbytes, const char *label, bool is_fatal) {
 	opt->mem_per_cpu = mbytes;
 	if (opt->srun_opt) {
 		/* only srun does this */
@@ -2864,9 +2867,12 @@ extern int arg_set_nodes_fromenv(slurm_opt_t *opt, const char *arg, const char *
 }
 
 extern int arg_set_ntasks_int(slurm_opt_t *opt, int ntasks, const char *label) {
+	sbatch_opt_t *sbopt = opt->sbatch_opt;
 	opt->ntasks = ntasks;
 	if (sbopt)
 		sbopt->pack_env->ntasks = opt->ntasks;
+
+	return SLURM_SUCCESS;
 }
 
 extern int arg_set_ntasks(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
@@ -3419,7 +3425,7 @@ extern int arg_set_tres_per_job(slurm_opt_t *opt, const char *arg, const char *l
 
 extern int arg_set_uid(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	if (!arg)
-		return SLURM_ERRROR;
+		return SLURM_ERROR;
 	if (getuid() != 0)
 		return _arg_set_error(label, "only permitted by root user", "", is_fatal);
 	if (opt->euid != (uid_t) -1)
@@ -3435,7 +3441,7 @@ extern int arg_set_umask(slurm_opt_t *opt, const char *arg, const char *label, b
 	if (!sbopt)
 		return SLURM_SUCCESS;
 	sbopt->umask = strtol(arg, NULL, 0);
-	if ((sbopt->umask < 0) || (sbopt->mask > 0777)) {
+	if ((sbopt->umask < 0) || (sbopt->umask > 0777)) {
 		error("Invalid umask ignored");
 		sbopt->umask = -1;
 	}
