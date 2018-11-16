@@ -198,7 +198,7 @@ _is_valid_timespec(const char *s)
  * delta (out): delta in seconds
  * RET: -1 on error, 0 otherwise
  */
-static int _get_delta(char *time_str, int *pos, long *delta)
+static int _get_delta(const char *time_str, int *pos, long *delta)
 {
 	int i, offset;
 	long cnt = 0;
@@ -245,7 +245,7 @@ static int _get_delta(char *time_str, int *pos, long *delta)
  * RET: -1 on error, 0 otherwise
  */
 static int
-_get_time(char *time_str, int *pos, int *hour, int *minute, int * second)
+_get_time(const char *time_str, int *pos, int *hour, int *minute, int * second)
 {
 	int hr, min, sec;
 	int offset = *pos;
@@ -334,7 +334,7 @@ _get_time(char *time_str, int *pos, int *hour, int *minute, int * second)
  * month, mday, year (out): numberic values
  * RET: -1 on error, 0 otherwise
  */
-static int _get_date(char *time_str, int *pos, int *month, int *mday, int *year)
+static int _get_date(const char *time_str, int *pos, int *month, int *mday, int *year)
 {
 	int mon, day, yr;
 	int offset = *pos;
@@ -457,7 +457,7 @@ static int _get_date(char *time_str, int *pos, int *month, int *mday, int *year)
  * NOTE: by default this will look into the future for the next time.
  * if you want to look in the past set the past flag.
  */
-extern time_t parse_time(char *time_str, int past)
+extern time_t parse_time(const char *time_str, int past)
 {
 	int    hour = -1, minute = -1, second = 0;
 	int    month = -1, mday = -1, year = -1;
