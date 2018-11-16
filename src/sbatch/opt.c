@@ -124,7 +124,6 @@ slurm_opt_t opt;
 sbatch_opt_t sbopt;
 sbatch_env_t pack_env;
 int   error_exit = 1;
-int   ignore_pbs = 0;
 bool  is_pack_job = false;
 
 /*---- forward declarations of static functions  ----*/
@@ -974,7 +973,7 @@ static bool _opt_wrpr_batch_script(const char *file, const void *body,
 	int i;
 	bool found = false;
 
-	if (ignore_pbs)
+	if (sbopt.ignore_pbs)
 		return false;
 	if (getenv("SBATCH_IGNORE_PBS"))
 		return false;
