@@ -347,6 +347,7 @@ extern int arg_set_time(slurm_opt_t *opt, const char *arg, const char *label, bo
 extern int arg_set_time_min(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_tmp(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_tmp_mb(slurm_opt_t *opt, long mbytes, const char *label, bool is_fatal);
+extern int arg_set_tres_per_job(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_uid(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_umask(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_unbuffered(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
