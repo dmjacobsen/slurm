@@ -1287,40 +1287,6 @@ extern int   spank_unset_job_env(const char *name)
 	return 0;	/* not found */
 }
 
-/* Read specified file's contents into a buffer.
- * Caller must xfree the buffer's contents */
-static char *_read_file(char *fname)
-{
-	int fd, i, offset = 0;
-	struct stat stat_buf;
-	char *file_buf;
-
-	fd = open(fname, O_RDONLY);
-	if (fd < 0) {
-		fatal("Could not open burst buffer specification file %s: %m",
-		      fname);
-	}
-	if (fstat(fd, &stat_buf) < 0) {
-		fatal("Could not stat burst buffer specification file %s: %m",
-		      fname);
-	}
-	file_buf = xmalloc(stat_buf.st_size);
-	while (stat_buf.st_size > offset) {
-		i = read(fd, file_buf + offset, stat_buf.st_size - offset);
-		if (i < 0) {
-			if (errno == EAGAIN)
-				continue;
-			fatal("Could not read burst buffer specification "
-			      "file %s: %m", fname);
-		}
-		if (i == 0)
-			break;	/* EOF */
-		offset += i;
-	}
-	close(fd);
-	return file_buf;
-}
-
 /* helper function for printing options
  *
  * warning: returns pointer to memory allocated on the stack.

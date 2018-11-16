@@ -306,7 +306,6 @@ static void  _opt_list(void);
 static bool _opt_verify(void);
 
 static void  _process_env_var(env_vars_t *e, const char *val);
-static char *_read_file(char *fname);
 static void  _set_options(const int argc, char **argv);
 static bool  _under_parallel_debugger(void);
 static void  _usage(void);
@@ -2376,40 +2375,6 @@ static void _opt_list(void)
 	for (i = 0; i < opt.spank_job_env_size; i++)
 		info("spank_job_env[%d] : %s", i, opt.spank_job_env[i]);
 
-}
-
-/* Read specified file's contents into a buffer.
- * Caller must xfree the buffer's contents */
-static char *_read_file(char *fname)
-{
-	int fd, i, offset = 0;
-	struct stat stat_buf;
-	char *file_buf;
-
-	fd = open(fname, O_RDONLY);
-	if (fd < 0) {
-		fatal("Could not open burst buffer specification file %s: %m",
-		      fname);
-	}
-	if (fstat(fd, &stat_buf) < 0) {
-		fatal("Could not stat burst buffer specification file %s: %m",
-		      fname);
-	}
-	file_buf = xmalloc(stat_buf.st_size);
-	while (stat_buf.st_size > offset) {
-		i = read(fd, file_buf + offset, stat_buf.st_size - offset);
-		if (i < 0) {
-			if (errno == EAGAIN)
-				continue;
-			fatal("Could not read burst buffer specification "
-			      "file %s: %m", fname);
-		}
-		if (i == 0)
-			break;	/* EOF */
-		offset += i;
-	}
-	close(fd);
-	return file_buf;
 }
 
 /* Determine if srun is under the control of a parallel debugger or not */

@@ -1556,7 +1556,7 @@ uint16_t parse_compress_type(const char *arg)
 	return COMPRESS_OFF;
 }
 
-extern int validate_acctg_freq(char *acctg_freq, const char *label)
+int _validate_acctg_freq(const char *acctg_freq, const char *label)
 {
 	int i;
 	char *save_ptr = NULL, *tok, *tmp;
@@ -1638,8 +1638,9 @@ static int _arg_set_error(const char *label, bool is_fatal,
 			  const char *fmt, ...)
 {
 	char buffer[1024];
+	va_list ap;
 	va_start(ap, fmt);
-	vsnprintf(buf, 1024, fmt, ap);
+	vsnprintf(buffer, 1024, fmt, ap);
 	va_end(ap);
 
 	error("%s: %s.%s", label, buffer,
@@ -1647,6 +1648,41 @@ static int _arg_set_error(const char *label, bool is_fatal,
 	if (is_fatal)
 		exit(1);
 	return SLURM_ERROR;
+}
+
+
+/* Read specified file's contents into a buffer.
+ * Caller must xfree the buffer's contents */
+static char *_read_file(const char *fname)
+{
+	int fd, i, offset = 0;
+	struct stat stat_buf;
+	char *file_buf;
+
+	fd = open(fname, O_RDONLY);
+	if (fd < 0) {
+		fatal("Could not open burst buffer specification file %s: %m",
+		      fname);
+	}
+	if (fstat(fd, &stat_buf) < 0) {
+		fatal("Could not stat burst buffer specification file %s: %m",
+		      fname);
+	}
+	file_buf = xmalloc(stat_buf.st_size);
+	while (stat_buf.st_size > offset) {
+		i = read(fd, file_buf + offset, stat_buf.st_size - offset);
+		if (i < 0) {
+			if (errno == EAGAIN)
+				continue;
+			fatal("Could not read burst buffer specification "
+			      "file %s: %m", fname);
+		}
+		if (i == 0)
+			break;	/* EOF */
+		offset += i;
+	}
+	close(fd);
+	return file_buf;
 }
 
 extern int arg_set_accel_bind(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
@@ -1678,7 +1714,7 @@ extern int arg_set_acctg_freq(slurm_opt_t *opt, const char *arg, const char *lab
 	if (!arg)
 		return SLURM_ERROR;
 	xfree(opt->acctg_freq);
-	if (validate_acctg_freq(arg, label) && is_fatal)
+	if (_validate_acctg_freq(arg, label) && is_fatal)
 		exit(1);
 	opt->acctg_freq = xstrdup(arg);
 
@@ -1769,16 +1805,6 @@ extern int arg_set_bell(slurm_opt_t *opt, const char *arg, const char *label, bo
 	return SLURM_SUCCESS;
 }
 
-extern int arg_set_blrts_image(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	if (!arg)
-		return SLURM_ERROR;
-
-	xfree(opt->blrtsimage);
-	opt->blrtsimage = xstrdup(arg);
-
-	return SLURM_SUCCESS;
-}
-
 extern int arg_set_chdir(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	return arg_set_workdir(opt, arg, label, is_fatal);
 }
@@ -1845,10 +1871,6 @@ extern int arg_set_clusters(slurm_opt_t *opt, const char *arg, const char *label
 	return SLURM_SUCCESS;
 }
 
-extern int arg_set_cnload_image(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	return arg_set_linux_image(opt, arg, label, is_fatal);
-}
-
 extern int arg_set_comment(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	if (!arg)
 		return SLURM_ERROR;
@@ -1862,14 +1884,6 @@ extern int arg_set_compress(slurm_opt_t *opt, const char *arg, const char *label
 	srun_opt_t *sropt = opt->srun_opt;
 	if (sropt)
 		sropt->compress = parse_compress_type(arg);
-	return SLURM_SUCCESS;
-}
-
-extern int arg_set_conn_type(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	if (!arg)
-		return SLURM_ERROR;
-	verify_conn_type(arg, opt->conn_type);
-
 	return SLURM_SUCCESS;
 }
 
@@ -1897,7 +1911,7 @@ extern int arg_set_core_spec(slurm_opt_t *opt, const char *arg, const char *labe
 }
 
 extern int arg_set_cores_per_socket(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	max_val = 0;
+	int max_val = 0;
 	if (!arg)
 		return SLURM_ERROR;
 
@@ -2085,7 +2099,7 @@ extern int arg_set_error(slurm_opt_t *opt, const char *arg, const char *label, b
 	}
 	if (sropt) {
 		if (sropt->pty)
-			return _arg_set_err(label,
+			return _arg_set_error(label,
 					    "incompatible with --pty option",
 					    "", is_fatal);
 		xfree(sropt->efname);
@@ -2183,13 +2197,6 @@ extern int arg_set_extra_node_info(slurm_opt_t *opt, const char *arg, const char
 	if (sropt)
 		sropt->cpu_bind_type_set = true;
 	opt->threads_per_core_set = true;
-
-	return SLURM_SUCCESS;
-}
-
-extern int arg_set_geometry(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	if (verify_geometry(arg, opt->geometry))
-		return _arg_set_error(label, "invalid geometry", arg, is_fatal);;
 
 	return SLURM_SUCCESS;
 }
@@ -2296,8 +2303,8 @@ extern int arg_set_gres_flags(slurm_opt_t *opt, const char *arg, const char *lab
 	if (!arg)
 		return SLURM_ERROR;
 
-	if (!xstrcasecmp(optarg, "disable-binding")) {
-		opt.job_flags |= GRES_DISABLE_BIND;
+	if (!xstrcasecmp(optarg, "disable-binding"))
+		opt->job_flags |= GRES_DISABLE_BIND;
 	if (!xstrcasecmp(arg, "enforce-binding"))
 		opt->job_flags |= GRES_ENFORCE_BIND;
 	else
@@ -2384,10 +2391,6 @@ extern int arg_set_input(slurm_opt_t *opt, const char *arg, const char *label, b
 			sropt->ifname = xstrdup(arg);
 	}
 	return SLURM_SUCCESS;
-}
-
-extern int arg_set_ioload_image(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	return arg_set_ramdisk_image(opt, arg, label, is_fatal);
 }
 
 extern int arg_set_job_name(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
@@ -2512,17 +2515,6 @@ extern int arg_set_licenses(slurm_opt_t *opt, const char *arg, const char *label
 
 	xfree(opt->licenses);
 	opt->licenses = xstrdup(arg);
-	return SLURM_SUCCESS;
-}
-
-extern int arg_set_linux_image(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	if (!arg)
-		return SLURM_ERROR;
-	if (strchr(arg, ' '))
-		return _arg_set_error(label, is_fatal, "invalid CnloadImage given '%s'", arg);
-
-	xfree(opt->linuximage);
-	opt->linuximage = xstrdup(arg);
 	return SLURM_SUCCESS;
 }
 
@@ -2687,16 +2679,6 @@ extern int arg_set_minthreads(slurm_opt_t *opt, const char *arg, const char *lab
 	return SLURM_SUCCESS;
 }
 
-extern int arg_set_mloader_image(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	if (!arg)
-		return SLURM_ERROR;
-	if (strchr(arg, ' ')
-		return _arg_set_err(label, is_fatal, "invalid MloaderImage given '%s'", arg);
-	xfree(opt->mloaderimage);
-	opt->mloaderimage = xstrdup(arg);
-	return SLURM_SUCCESS;
-}
-
 extern int arg_set_mpi(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	if (!arg)
 		return SLURM_ERROR;
@@ -2803,15 +2785,6 @@ extern int arg_set_no_kill(slurm_opt_t *opt, const char *arg, const char *label,
 extern int arg_set_no_requeue(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	sbatch_opt_t *sbopt = opt->sbatch_opt;
 	sbopt->requeue = 0;
-	return SLURM_SUCCESS;
-}
-
-extern int arg_set_no_rotate(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	if (arg)
-		opt->no_rotate = parse_bool(arg);
-	else
-		opt->no_rotate = true;
-
 	return SLURM_SUCCESS;
 }
 
@@ -2963,6 +2936,7 @@ extern int arg_set_open_mode(slurm_opt_t *opt, const char *arg, const char *labe
 
 		if (sbopt)
 			setenvf(NULL, "SLURM_OPEN_MODE", arg);
+	}
 
 	return SLURM_SUCCESS;
 }
@@ -3153,18 +3127,6 @@ extern int arg_set_quit_on_interrupt(slurm_opt_t *opt, const char *arg, const ch
 	if (!sropt)
 		return SLURM_SUCCESS;
 	sropt->quit_on_intr = true;
-	return SLURM_SUCCESS;
-}
-
-extern int arg_set_ramdisk_image(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	if (!arg)
-		return SLURM_ERROR;
-	if (strchr(arg, ' '))
-		return _arg_set_error(label, is_fatal, "invalid IoloadImage given '%s'", arg);
-
-	xfree(opt->ramdiskimage);
-	opt->ramdiskimage = xstrdup(arg);
-
 	return SLURM_SUCCESS;
 }
 
@@ -3473,7 +3435,7 @@ extern int arg_set_umask(slurm_opt_t *opt, const char *arg, const char *label, b
 	if (!sbopt)
 		return SLURM_SUCCESS;
 	sbopt->umask = strtol(arg, NULL, 0);
-	if ((sbopt.umask < 0) || (sbopt.umask > 0777)) {
+	if ((sbopt->umask < 0) || (sbopt->mask > 0777)) {
 		error("Invalid umask ignored");
 		sbopt->umask = -1;
 	}
@@ -3499,7 +3461,7 @@ extern int arg_set_verbose(slurm_opt_t *opt, const char *arg, const char *label,
 	char *end = NULL;
 	if (arg) {
                 if (arg[0] != '\0') {
-                        opt.verbose = (int) strtol(arg, &end, 10);
+                        opt->verbose = (int) strtol(arg, &end, 10);
                         if (!(end && *end == '\0'))
 				return SLURM_ERROR;
                 }
@@ -3593,10 +3555,10 @@ extern int arg_set_wrap(slurm_opt_t *opt, const char *arg, const char *label, bo
 	if (!sbopt)
 		return SLURM_SUCCESS;
 
-	xfree(opt.job_name);
-	xfree(sbopt.wrap);
-	opt.job_name = xstrdup("wrap");
-	sbopt.wrap = xstrdup(optarg);
+	xfree(opt->job_name);
+	xfree(sbopt->wrap);
+	opt->job_name = xstrdup("wrap");
+	sbopt->wrap = xstrdup(optarg);
 	return SLURM_SUCCESS;
 }
 
