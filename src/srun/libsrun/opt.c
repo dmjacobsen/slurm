@@ -2117,8 +2117,7 @@ static bool _opt_verify(void)
 
 	if (sropt.max_threads <= 0) {	/* set default */
 		error("Thread value invalid, reset to 1");
-		sropt.max_threads = 1;
-		pmi_server_max_threads(sropt.max_threads);
+		arg_set_max_threads(&opt, "1", "max_threads", false);
 	} else if (sropt.max_threads > MAX_THREADS) {
 		error("Thread value exceeds defined limit, reset to %d",
 		      MAX_THREADS);

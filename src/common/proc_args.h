@@ -132,12 +132,12 @@ char *print_commandline(const int script_argc, char **script_argv);
 /* Translate a signal option string "--signal=<int>[@<time>]" into
  * it's warn_signal and warn_time components.
  * RET 0 on success, -1 on failure */
-int get_signal_opts(char *optarg, uint16_t *warn_signal, uint16_t *warn_time,
+int get_signal_opts(const char *optarg, uint16_t *warn_signal, uint16_t *warn_time,
 		    uint16_t *warn_flags);
 
 /* Convert a signal name to it's numeric equivalent.
  * Return 0 on failure */
-int sig_name2num(char *signal_name);
+int sig_name2num(const char *signal_name);
 
 /*
  * parse_uint16/32/64 - Convert ascii string to a 16/32/64 bit unsigned int.
@@ -269,12 +269,11 @@ extern int arg_set_mail_type(slurm_opt_t *opt, const char *arg, const char *labe
 extern int arg_set_mail_user(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_mcs_label(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_mem(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
-extern int arg_set_mem_mb(slurm_opt_t *opt, int64_t mbytes, const char *label);
 extern int arg_set_mem_bind(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
-extern int arg_set_mem_per_cpu_mb(slurm_opt_t *opt, int64_t mbytes, const char *label);
+extern int arg_set_mem_per_cpu_mb(slurm_opt_t *opt, int64_t mbytes);
 extern int arg_set_mem_per_cpu(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_mem_per_gpu(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
-extern int arg_set_mem_per_gpu_mb(slurm_opt_t *opt, int64_t mbytes, const char *label, bool is_fatal);
+extern int arg_set_mem_per_gpu_mb(slurm_opt_t *opt, int64_t mbytes);
 extern int arg_set_mincores(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_mincpus(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_mincpus_int(slurm_opt_t *opt, int arg, const char *label, bool is_fatal);
@@ -297,7 +296,7 @@ extern int arg_set_nodefile(slurm_opt_t *opt, const char *arg, const char *label
 extern int arg_set_nodelist(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_nodes(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_nodes_fromenv(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
-extern int arg_set_ntasks_int(slurm_opt_t *opt, int ntasks, const char *label);
+extern int arg_set_ntasks_int(slurm_opt_t *opt, int ntasks, const char *label, bool is_fatal);
 extern int arg_set_ntasks(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_ntasks_per_core(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_ntasks_per_node(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
@@ -344,7 +343,6 @@ extern int arg_set_threads_per_core(slurm_opt_t *opt, const char *arg, const cha
 extern int arg_set_time(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_time_min(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_tmp(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
-extern int arg_set_tmp_mb(slurm_opt_t *opt, long mbytes, const char *label, bool is_fatal);
 extern int arg_set_tres_per_job(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_uid(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_umask(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
