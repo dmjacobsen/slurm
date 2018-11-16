@@ -105,6 +105,7 @@ typedef struct sbatch_opt {
 	char *ckpt_dir;			/* --checkpoint-dir		*/
 	char *export_env;		/* --export			*/
 	char *export_file;		/* --export-file=file		*/
+	bool ignore_pbs;		/* --ignore_pbs			*/
 	int minsockets;			/* --minsockets=n		*/
 	int mincores;			/* --mincores=n			*/
 	int minthreads;			/* --minthreads=n		*/

@@ -2341,7 +2341,10 @@ extern int arg_set_hold(slurm_opt_t *opt, const char *arg, const char *label, bo
 }
 
 extern int arg_set_ignore_pbs(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	ignore_pbs = 1;
+	sbatch_opt_t *sbopt = opt->sbatch_opt;
+	if (sbopt)
+		sbopt->ignore_pbs = 1;
+
 	return SLURM_SUCCESS;
 }
 
