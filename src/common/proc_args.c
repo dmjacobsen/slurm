@@ -62,12 +62,16 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
+#include "src/api/pmi_server.h"
+#include "src/common/cpu_frequency.h"
 #include "src/common/gres.h"
 #include "src/common/list.h"
 #include "src/common/log.h"
+#include "src/common/parse_time.h"
 #include "src/common/proc_args.h"
-#include "src/common/slurm_protocol_api.h"
 #include "src/common/slurm_acct_gather_profile.h"
+#include "src/common/slurm_protocol_api.h"
+#include "src/common/slurm_resource_info.h"
 #include "src/common/uid.h"
 #include "src/common/util-net.h"
 #include "src/common/x11_util.h"
@@ -1130,7 +1134,7 @@ char *print_commandline(const int script_argc, char **script_argv)
 /* Translate a signal option string "--signal=<int>[@<time>]" into
  * it's warn_signal and warn_time components.
  * RET 0 on success, -1 on failure */
-int get_signal_opts(char *optarg, uint16_t *warn_signal, uint16_t *warn_time,
+int get_signal_opts(const char *optarg, uint16_t *warn_signal, uint16_t *warn_time,
 		    uint16_t *warn_flags)
 {
 	char *endptr;
@@ -1170,7 +1174,7 @@ int get_signal_opts(char *optarg, uint16_t *warn_signal, uint16_t *warn_time,
 
 /* Convert a signal name to it's numeric equivalent.
  * Return 0 on failure */
-int sig_name2num(char *signal_name)
+int sig_name2num(const char *signal_name)
 {
 	struct signal_name_value {
 		char *name;
@@ -1193,13 +1197,14 @@ int sig_name2num(char *signal_name)
 		{ "TTOU",	SIGTTOU	},
 		{ NULL,		0	}	/* terminate array */
 	};
-	char *ptr;
+	const char *ptr;
+	char *eptr;
 	long tmp;
 	int i;
 
-	tmp = strtol(signal_name, &ptr, 10);
-	if (ptr != signal_name) { /* found a number */
-		if (xstring_is_whitespace(ptr))
+	tmp = strtol(signal_name, &eptr, 10);
+	if (eptr != signal_name) { /* found a number */
+		if (xstring_is_whitespace(eptr))
 			return (int)tmp;
 		else
 			return 0;
@@ -1984,24 +1989,6 @@ extern int arg_set_cpus_per_task(slurm_opt_t *opt, const char *arg, const char *
 	return arg_set_cpus_per_task_int(opt, tmp_int, label, is_fatal);
 }
 
-extern int arg_set_cpus_per_task_int(slurm_opt_t *opt, int arg, const char *label, bool is_fatal) {
-	if (opt->srun_opt && opt->cpus_set && (arg > opt->cpus_per_task)) {
-		/* warn only for srun */
-		info("Job step's --cpus-per-task value exceeds"
-		     " that of job (%d > %d). Job step may "
-		     "never run.", arg, opt->cpus_per_task);
-	}
-	if (arg <= 0)
-		return _arg_set_error(label, is_fatal, "invalid number of cpus per task: %d", arg);
-
-	if (opt->sbatch_opt)
-		opt->sbatch_opt->pack_env->cpus_per_task = arg;
-	opt->cpus_set = true;
-	opt->cpus_per_task = arg;
-
-	return SLURM_SUCCESS;
-}
-
 extern int arg_set_deadline(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	if (!arg)
 		return SLURM_ERROR;
@@ -2114,7 +2101,7 @@ extern int arg_set_error(slurm_opt_t *opt, const char *arg, const char *label, b
 	return SLURM_SUCCESS;
 }
 
-static bool _valid_node_list(char **node_list_pptr)
+static bool _valid_node_list(slurm_opt_t *opt, char **node_list_pptr)
 {
         int count = NO_VAL;
 
@@ -2122,16 +2109,16 @@ static bool _valid_node_list(char **node_list_pptr)
            procs to use then we need exactly this many since we are
            saying, lay it out this way!  Same for max and min nodes.
            Other than that just read in as many in the hostfile */
-	if (opt.ntasks_set)
-		count = opt.ntasks;
-	else if (opt.nodes_set) {
-		if (opt.max_nodes)
-			count = opt.max_nodes;
-		else if (opt.min_nodes)
-			count = opt.min_nodes;
+	if (opt->ntasks_set)
+		count = opt->ntasks;
+	else if (opt->nodes_set) {
+		if (opt->max_nodes)
+			count = opt->max_nodes;
+		else if (opt->min_nodes)
+			count = opt->min_nodes;
 	}
 
-	return verify_node_list(node_list_pptr, opt.distribution, count);
+	return verify_node_list(node_list_pptr, opt->distribution, count);
 }
 
 extern int arg_set_exclude(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
@@ -2139,7 +2126,7 @@ extern int arg_set_exclude(slurm_opt_t *opt, const char *arg, const char *label,
 		return SLURM_ERROR;
 	xfree(opt->exc_nodes);
 	opt->exc_nodes = xstrdup(arg);
-	if (!_valid_node_list(&opt->exc_nodes))
+	if (!_valid_node_list(opt, &opt->exc_nodes))
 		return _arg_set_error(label, is_fatal, "invalid node list: %s", arg);
 
 	return SLURM_SUCCESS;
@@ -2204,21 +2191,25 @@ extern int arg_set_extra_node_info(slurm_opt_t *opt, const char *arg, const char
 	return SLURM_SUCCESS;
 }
 
-static void _proc_get_user_env(char *optarg) {
+static void _proc_get_user_env(slurm_opt_t *opt, const char *optarg) {
+	char *arg = xstrdup(optarg);
 	char *end_ptr;
-	if ((optarg[0] >= '0') && (optarg[0] <= '9'))
-		opt.get_user_env_time = strtol(optarg, &end_ptr, 10);
+	if ((arg[0] >= '0') && (arg[0] <= '9'))
+		opt->get_user_env_time = strtol(arg, &end_ptr, 10);
 	else {
-		opt.get_user_env_time = 0;
-		end_ptr = optarg;
+		opt->get_user_env_time = 0;
+		end_ptr = arg;
 	}
 
 	if ((end_ptr == NULL) || (end_ptr[0] == '\0'))
-		return;
+		goto endit;
 	if ((end_ptr[0] == 's') || (end_ptr[0] == 'S'))
-		opt.get_user_env_mode = 1;
+		opt->get_user_env_mode = 1;
 	else if ((end_ptr[0] == 'l') || (end_ptr[0] == 'L'))
-		opt.get_user_env_mode = 2;
+		opt->get_user_env_mode = 2;
+
+endit:
+	xfree(arg);
 }
 
 extern int arg_set_get_user_env(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
@@ -2228,7 +2219,7 @@ extern int arg_set_get_user_env(slurm_opt_t *opt, const char *arg, const char *l
 		return SLURM_SUCCESS;
 	}
 	if (arg)
-		_proc_get_user_env(arg);
+		_proc_get_user_env(opt, arg);
 	else
 		opt->get_user_env_time = 0;
 
@@ -2276,7 +2267,7 @@ extern int arg_set_gpus(slurm_opt_t *opt, const char *arg, const char *label, bo
 extern int arg_set_gpus_per_node(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	if (!arg)
 		return SLURM_ERROR;
-	xfree(opt->gpu_per_node);
+	xfree(opt->gpus_per_node);
 	opt->gpus_per_node = xstrdup(arg);
 	return SLURM_SUCCESS;
 }
@@ -2323,7 +2314,7 @@ extern int arg_set_hint(slurm_opt_t *opt, const char *arg, const char *label, bo
 	if (!arg)
 		return SLURM_ERROR;
 	if (sropt)
-		cpu_bind_type = sropt->cpu_bind_type;
+		cpu_bind_type = &sropt->cpu_bind_type;
 
 	/* Keep this logic after other options filled in */
 	if (!opt->hint_set && !opt->ntasks_per_core_set &&
@@ -2554,22 +2545,17 @@ extern int arg_set_mcs_label(slurm_opt_t *opt, const char *arg, const char *labe
 }
 
 extern int arg_set_mem(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	int64_t mbytes = 0;
 	if (!arg)
 		return SLURM_ERROR;
-	mbytes = (int64_t) str_to_mbytes2(arg);
-	return arg_set_mem_mb(opt, mbytes, label, is_fatal);
-}
 
-extern int arg_set_mem_mb(slurm_opt_t *opt, int64_t mbytes, const char *label) {
-	opt->pn_min_memory = mbytes);
+	opt->pn_min_memory = (int64_t) str_to_mbytes2(arg);
 	if (opt->srun_opt) {
 		/* only srun does this */
 		opt->mem_per_cpu = NO_VAL64;
 	}
+
 	if (opt->pn_min_memory < 0)
 		return _arg_set_error(label, "invalid memory constraint", arg, is_fatal);
-
 	return SLURM_SUCCESS;
 }
 
@@ -2580,20 +2566,20 @@ extern int arg_set_mem_bind(slurm_opt_t *opt, const char *arg, const char *label
 		/* TODO only srun does this at present */
 		xfree(opt->mem_bind);
 	}
-	if (slurm_verify_mem_bind(arg, &opt->mem_bind, &opt->mem_bind_type, is_fatal))
-		return _arg_set_error(label, "invalid argument", arg, is_fatal);
+	if (slurm_verify_mem_bind(arg, &opt->mem_bind, &opt->mem_bind_type))
+		return _arg_set_error(label, "invalid argument", arg);
 
 	return SLURM_SUCCESS;
 }
 
-extern int arg_set_mem_per_cpu_mb(slurm_opt_t *opt, int64_t mbytes, const char *label, bool is_fatal) {
+extern int arg_set_mem_per_cpu_mb(slurm_opt_t *opt, int64_t mbytes) {
 	opt->mem_per_cpu = mbytes;
 	if (opt->srun_opt) {
 		/* only srun does this */
 		opt->pn_min_memory = NO_VAL64;
 	}
 	if (opt->mem_per_cpu < 0)
-		return _arg_set_error(label, "invalid memory constraint", arg, is_fatal);;
+		return SLURM_ERROR;
 	return SLURM_SUCCESS;
 }
 
@@ -2602,7 +2588,10 @@ extern int arg_set_mem_per_cpu(slurm_opt_t *opt, const char *arg, const char *la
 	if (!arg)
 		return SLURM_ERROR;
 	mem_per_cpu = (int64_t) str_to_mbytes2(arg);
-	return arg_set_mem_per_cpu_mb(opt, mem_per_cpu, label, is_fatal);
+	if (arg_set_mem_per_cpu_mb(opt, mem_per_cpu))
+		return _arg_set_error(label, "invalid memory constraint", arg, is_fatal);
+
+	return SLURM_SUCCESS;
 }
 
 extern int arg_set_mem_per_gpu(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
@@ -2610,13 +2599,16 @@ extern int arg_set_mem_per_gpu(slurm_opt_t *opt, const char *arg, const char *la
 	if (!arg)
 		return SLURM_ERROR;
 	mbytes = (int64_t) str_to_mbytes2(arg);
-	return arg_set_mem_per_gpu_mb(opt, mbytes, label, is_fatal);
+	if (arg_set_mem_per_gpu_mb(opt, mbytes))
+		return _arg_set_error(label, "invalid mem-per-gpu constraint", arg, is_fatal);
+
+	return SLURM_SUCCESS;
 }
 
-extern int arg_set_mem_per_gpu_mb(slurm_opt_t *opt, int64_t mbytes, const char *label, bool is_fatal) {
+extern int arg_set_mem_per_gpu_mb(slurm_opt_t *opt, int64_t mbytes) {
 	opt->mem_per_gpu = mbytes;
 	if (opt->mem_per_gpu < 0)
-		return _arg_set_error(label, "invalid mem-per-gpu constraint", arg, is_fatal);
+		return SLURM_ERROR;
 
 	return SLURM_SUCCESS;
 }
@@ -2675,7 +2667,7 @@ extern int arg_set_minthreads(slurm_opt_t *opt, const char *arg, const char *lab
 		"threads-per-core");
 	opt->threads_per_core = parse_int(label, arg, true);
 	if (opt->threads_per_core < 0)
-		return _arg_set_error(label", invalid argument", arg, is_fatal);
+		return _arg_set_error(label, "invalid argument", arg, is_fatal);
 
 	opt->threads_per_core_set = true;
 
@@ -2758,6 +2750,8 @@ extern int arg_set_nice(slurm_opt_t *opt, const char *arg, const char *label, bo
 
 extern int arg_set_no_allocate(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	srun_opt_t *sropt = opt->srun_opt;
+	struct utsname name;
+
 	if (!sropt)
 		return SLURM_SUCCESS;
 
@@ -2802,6 +2796,8 @@ extern int arg_set_no_shell(slurm_opt_t *opt, const char *arg, const char *label
 }
 
 extern int arg_set_nodefile(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
+	char *tmp = NULL;
+
 	/* skip if srun */
 	if (!arg)
 		return SLURM_ERROR;
@@ -2810,12 +2806,12 @@ extern int arg_set_nodefile(slurm_opt_t *opt, const char *arg, const char *label
 
 	xfree(opt->nodelist);
 	tmp = slurm_read_hostfile(arg, 0);
-	if (tmp != NULL) {
+	if (tmp) {
 		opt->nodelist = xstrdup(tmp);
+		/* DMJ TODO: this really should be free(), slurm_read_hostfile uses malloc(), maybe file a bug */
 		free(tmp);
-	} else {
+	} else
 		return _arg_set_error(label, "invalid node file", arg, is_fatal);
-	}
 
 	return SLURM_SUCCESS;
 }
@@ -2826,7 +2822,7 @@ extern int arg_set_nodelist(slurm_opt_t *opt, const char *arg, const char *label
 	xfree(opt->nodelist);
 	opt->nodelist = xstrdup(arg);
 
-	if (!_valid_node_list(opt->nodelist))
+	if (!_valid_node_list(opt, &opt->nodelist))
 		return _arg_set_error(label, "invalid argument", arg, is_fatal);
 	return SLURM_SUCCESS;
 }
@@ -2866,7 +2862,7 @@ extern int arg_set_nodes_fromenv(slurm_opt_t *opt, const char *arg, const char *
 	return rc;
 }
 
-extern int arg_set_ntasks_int(slurm_opt_t *opt, int ntasks, const char *label) {
+extern int arg_set_ntasks_int(slurm_opt_t *opt, int ntasks, const char *label, bool is_fatal) {
 	sbatch_opt_t *sbopt = opt->sbatch_opt;
 	opt->ntasks = ntasks;
 	if (sbopt)
@@ -3366,7 +3362,7 @@ extern int arg_set_threads_per_core(slurm_opt_t *opt, const char *arg, const cha
 extern int arg_set_time(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	int time_limit = 0;
 	if (!arg)
-		return NULL;
+		return SLURM_ERROR;
 
 	time_limit = time_str2mins(arg);
 	if ((time_limit < 0) && (time_limit != INFINITE))
@@ -3399,18 +3395,11 @@ extern int arg_set_time_min(slurm_opt_t *opt, const char *arg, const char *label
 }
 
 extern int arg_set_tmp(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	long tmp = 0;
 	if (!arg)
 		return SLURM_ERROR;
-	tmp = str_to_mbytes2(arg);
-	return arg_set_tmp_mb(opt, tmp, label, is_fatal);
-}
-
-extern int arg_set_tmp_mb(slurm_opt_t *opt, long mbytes, const char *label, bool is_fatal) {
-	opt->pn_min_tmp_disk = mbytes;
+	opt->pn_min_tmp_disk = str_to_mbytes2(arg);
 	if (opt->pn_min_tmp_disk < 0)
 		return _arg_set_error(label, "invalid tmp value", "", is_fatal);
-
 	return SLURM_SUCCESS;
 }
 
