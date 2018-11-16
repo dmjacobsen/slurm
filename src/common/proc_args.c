@@ -3446,6 +3446,15 @@ extern int arg_set_tmp_mb(slurm_opt_t *opt, long mbytes, const char *label, bool
 	return SLURM_SUCCESS;
 }
 
+extern int arg_set_tres_per_job(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
+	if (!arg)
+		return SLURM_ERROR;
+	xfree(opt->tres_per_job);
+	opt->tres_per_job = xstrdup(arg);
+
+	return SLURM_SUCCESS;
+}
+
 extern int arg_set_uid(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	if (!arg)
 		return SLURM_ERRROR;

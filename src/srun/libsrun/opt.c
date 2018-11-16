@@ -1607,8 +1607,7 @@ static void _set_options(const int argc, char **argv)
 			 * Currently undocumented option.
 			 * For future use and testing cons_tres.
 			 */
-			xfree(opt.tres_per_job);
-			opt.tres_per_job = xstrdup(optarg);
+			arg_set_tres_per_job(&opt, optarg, "--tres-per-job", false);
 			break;
 		case LONG_OPT_GRES:
 			arg_set_gres(&opt, optarg, "--gres", false);
