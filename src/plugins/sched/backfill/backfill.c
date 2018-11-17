@@ -599,7 +599,8 @@ static uint32_t _my_sleep(int usec)
 
 static void _load_config(void)
 {
-	char *sched_params, *tmp_ptr;
+	char *sched_params;
+	const char *tmp_ptr;
 
 	sched_params = slurm_get_sched_params();
 	debug_flags  = slurm_get_debug_flags();

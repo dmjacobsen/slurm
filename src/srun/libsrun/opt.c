@@ -283,9 +283,6 @@ static slurm_opt_t *_get_next_opt(int pack_offset, slurm_opt_t *opt_last);
 
 static int  _get_task_count(void);
 
-/* Get a decimal integer from arg */
-static int  _get_int(const char *arg, const char *what, bool positive);
-
 static bitstr_t *_get_pack_group(const int argc, char **argv,
 				 int default_pack_offset, bool *opt_found);
 
@@ -305,7 +302,6 @@ static void  _opt_list(void);
 /* verify options sanity  */
 static bool _opt_verify(void);
 
-static void  _process_env_var(env_vars_t *e, const char *val);
 static void  _set_options(const int argc, char **argv);
 static bool  _under_parallel_debugger(void);
 static void  _usage(void);
@@ -916,7 +912,7 @@ static void _opt_default(void)
  */
 struct env_vars {
         const char *var;
-        int *(set_func)(slurm_opt_t *, const char *, const char *, bool);
+        int (*set_func)(slurm_opt_t *, const char *, const char *, bool);
         int eval_pass;
         int exit_on_error;
 };
@@ -944,7 +940,7 @@ env_vars_t env_vars[] = {
 {"SLURM_DISTRIBUTION",  &arg_set_distribution,		0,	0 },
 {"SLURM_EPILOG",        &arg_set_epilog,		0,	0 },
 {"SLURM_EXCLUSIVE",     &arg_set_exclusive,		0,	0 },
-{"SLURM_EXPORT_ENV",    &arg_set_export_env,		0,	0 },
+{"SLURM_EXPORT_ENV",    &arg_set_export,		0,	0 },
 {"SLURM_GRES",          &arg_set_gres,			0,	0 },
 {"SLURM_GRES_FLAGS",    &arg_set_gres_flags,		0,	1 },
 {"SLURM_GPUS",          &arg_set_gpus,			0,	0 },
@@ -956,23 +952,23 @@ env_vars_t env_vars[] = {
 {"SLURM_HINT",          &arg_set_hint,			1,	1 },
 {"SLURM_IMMEDIATE",     &arg_set_immediate,		0,	0 },
 /* SLURM_JOBID was used in slurm version 1.3 and below, it is now vestigial */
-{"SLURM_JOBID",         &arg_set_job_id,		0,	0 },
-{"SLURM_JOB_ID",        &arg_set_job_id,		0,	0 },
+{"SLURM_JOBID",         &arg_set_jobid,			0,	0 },
+{"SLURM_JOB_ID",        &arg_set_jobid,			0,	0 },
 {"SLURM_JOB_NAME",      &arg_set_job_name_fromenv,	0,	0 },
-{"SLURM_KILL_BAD_EXIT", &arg_set_kill_bad_exit,		0,	0 },
-{"SLURM_LABELIO",       &arg_set_labelio,		0,	0 },
+{"SLURM_KILL_BAD_EXIT", &arg_set_kill_on_bad_exit,	0,	0 },
+{"SLURM_LABELIO",       &arg_set_label,			0,	0 },
 {"SLURM_MEM_BIND",      &arg_set_mem_bind,		0,	0 },
 {"SLURM_MEM_PER_CPU",	&arg_set_mem_per_cpu,		0,	0 },
 {"SLURM_MEM_PER_GPU",   &arg_set_mem_per_gpu,		0,	0},
-{"SLURM_MEM_PER_NODE",	&arg_set_mem_per_node,		0,	0 },
-{"SLURM_MPI_TYPE",      &arg_set_mpi_type,		0,	0 },
-{"SLURM_NCORES_PER_SOCKET",&arg_set_ncores_per_socket,	0,	0 },
+{"SLURM_MEM_PER_NODE",	&arg_set_mem,			0,	0 },
+{"SLURM_MPI_TYPE",      &arg_set_mpi,			0,	0 },
+{"SLURM_NCORES_PER_SOCKET",&arg_set_cores_per_socket,	0,	0 },
 {"SLURM_NETWORK",       &arg_set_network_fromenv,	0,	0 },
 {"SLURM_JOB_NUM_NODES", &arg_set_nodes_fromenv,		0,	0 },
-{"SLURM_JOB_NODELIST",  &arg_set_job_nodelist,		0,	0 },
+{"SLURM_JOB_NODELIST",  &arg_set_nodelist,		0,	0 },
 {"SLURM_NTASKS",        &arg_set_ntasks,		0,	0 },
-{"SLURM_NPROCS",        &arg_set_nprocs,		0,	0 },
-{"SLURM_NSOCKETS_PER_NODE",&arg_set_nsockets_per_node,	0,	0 },
+{"SLURM_NPROCS",        &arg_set_ntasks,		0,	0 },
+{"SLURM_NSOCKETS_PER_NODE",&arg_set_sockets_per_node,	0,	0 },
 {"SLURM_NTASKS_PER_NODE", &arg_set_ntasks_per_node,	0,	0 },
 {"SLURM_NTHREADS_PER_CORE",&arg_set_nthreads_per_core,	0,	0 },
 {"SLURM_NO_KILL",	&arg_set_no_kill,		0,	0 },
@@ -983,28 +979,28 @@ env_vars_t env_vars[] = {
 {"SLURM_PROFILE",       &arg_set_profile,		0,	0 },
 {"SLURM_PROLOG",        &arg_set_prolog,		0,	0 },
 {"SLURM_QOS",           &arg_set_qos,			0,	0 },
-{"SLURM_REMOTE_CWD",    &arg_set_remote_cwd,		0,	0 },
+{"SLURM_REMOTE_CWD",    &arg_set_workdir,		0,	0 }, /* DMJ: this now sets sropt->cwd_set, ok? */
 {"SLURM_REQ_SWITCH",    &arg_setcomp_req_switch,	0,	0 },
 {"SLURM_RESERVATION",   &arg_set_reservation,		0,	0 },
 {"SLURM_RESTART_DIR",   &arg_set_restart_dir,		0,	0 },
 {"SLURM_RESV_PORTS",    &arg_set_resv_ports,		0,	0 },
 {"SLURM_SPREAD_JOB",    &arg_set_spread_job,		0,	0 },
 {"SLURM_SIGNAL",        &arg_set_signal,		0,	1 },
-{"SLURM_SRUN_MULTI",    &arg_set_srun_multi,		0,	0 },
-{"SLURM_STDERRMODE",    &arg_set_stderrmode,		0,	0 },
-{"SLURM_STDINMODE",     &arg_set_stdinmode,		0,	0 },
-{"SLURM_STDOUTMODE",    &arg_set_stdoutmode,		0,	0 },
+{"SLURM_SRUN_MULTI",    &arg_set_multi_prog,		0,	0 },
+{"SLURM_STDERRMODE",    &arg_set_error,			0,	0 },
+{"SLURM_STDINMODE",     &arg_set_input,			0,	0 },
+{"SLURM_STDOUTMODE",    &arg_set_output,		0,	0 },
 {"SLURM_TASK_EPILOG",   &arg_set_task_epilog,		0,	0 },
 {"SLURM_TASK_PROLOG",   &arg_set_task_prolog,		0,	0 },
 {"SLURM_THREAD_SPEC",   &arg_set_thread_spec,		0,	0 },
 {"SLURM_THREADS",       &arg_set_threads,		0,	0 },
 {"SLURM_TIMELIMIT",     &arg_set_time,			0,	1 },
-{"SLURM_UNBUFFEREDIO",  &arg_set_unbufferedio,		0,	0 },
+{"SLURM_UNBUFFEREDIO",  &arg_set_unbuffered,		0,	0 },
 {"SLURM_USE_MIN_NODES", &arg_set_use_min_nodes,		0,	0 },
 {"SLURM_WAIT",          &arg_set_wait,			0,	0 },
-{"SLURM_WAIT4SWITCH",   &arg_setcomp_wait4switch,	0,	0 },
+{"SLURM_WAIT4SWITCH",   &arg_setcomp_req_wait4switch,	0,	0 },
 {"SLURM_WCKEY",         &arg_set_wckey,			0,	0 },
-{"SLURM_WORKING_DIR",   &arg_set_working_dir,		0,	0 },
+{"SLURM_WORKING_DIR",   &arg_set_workdir,		0,	0 },
 {NULL, NULL, 0, 0}
 };
 
@@ -1046,18 +1042,6 @@ static void _opt_env(int pack_offset, int pass)
 	/* Process spank env options */
 	if (spank_process_env_options())
 		exit(error_exit);
-}
-
-/*
- *  Get a decimal integer from arg.
- *
- *  Returns the integer on success, exits program on failure.
- *
- */
-static int
-_get_int(const char *arg, const char *what, bool positive)
-{
-	return parse_int(what, arg, positive);
 }
 
 /*
@@ -1135,15 +1119,10 @@ static bitstr_t *_get_pack_group(const int argc, char **argv,
 
 static void _set_options(const int argc, char **argv)
 {
-	int opt_char, option_index = 0, max_val = 0, tmp_int;
-	struct utsname name;
-	char *pos_delimit;
+	int opt_char, option_index = 0;
 	bool ntasks_set_opt = false;
 	bool nodes_set_opt = false;
 
-#ifdef HAVE_PTY_H
-	char *tmp_str;
-#endif
 	struct option *optz = spank_option_table_create (long_options);
 
 	if (!optz) {
@@ -1242,7 +1221,7 @@ static void _set_options(const int argc, char **argv)
 			arg_set_overcommit(&opt, NULL, "--overcommit", false);
 			break;
 		case (int)'p':
-			arg_set_partition(&opt, optarg)
+			arg_set_partition(&opt, optarg, "--partition", false);
 			break;
 		case (int)'P':
 			verbose("-P option is deprecated, use -d instead");
@@ -2028,7 +2007,7 @@ static bool _opt_verify(void)
 
 	if (sropt.max_threads <= 0) {	/* set default */
 		error("Thread value invalid, reset to 1");
-		arg_set_max_threads(&opt, "1", "max_threads", false);
+		arg_set_threads(&opt, "1", "max_threads", false);
 	} else if (sropt.max_threads > MAX_THREADS) {
 		error("Thread value exceeds defined limit, reset to %d",
 		      MAX_THREADS);

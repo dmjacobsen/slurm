@@ -109,7 +109,8 @@ static void _my_sleep(int secs)
 
 static void _load_config(void)
 {
-	char *sched_params, *tmp_ptr;
+	char *sched_params;
+	const char *tmp_ptr;
 
 	sched_timeout = slurm_get_msg_timeout() / 2;
 	sched_timeout = MAX(sched_timeout, 1);

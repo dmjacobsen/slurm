@@ -2128,7 +2128,8 @@ extern bool select_p_node_ranking(struct node_record *node_ptr, int node_cnt)
  */
 extern int select_p_node_init(struct node_record *node_ptr, int node_cnt)
 {
-	char *preempt_type, *sched_params, *tmp_ptr;
+	char *preempt_type, *sched_params;
+	const char *tmp_ptr;
 	int i, tot_core;
 
 	info("cons_res: select_p_node_init");

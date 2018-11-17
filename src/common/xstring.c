@@ -570,10 +570,10 @@ char *xstrstr(const char *haystack, const char *needle)
 	return strstr(haystack, needle);
 }
 
-char *xstrcasestr(char *haystack, char *needle)
+const char *xstrcasestr(const char *haystack, char *needle)
 {
 	int hay_inx, hay_size, need_inx, need_size;
-	char *hay_ptr = haystack;
+	const char *hay_ptr = haystack;
 
 	if (haystack == NULL || needle == NULL)
 		return NULL;
