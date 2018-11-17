@@ -6582,7 +6582,7 @@ static void  _slurm_rpc_composite_msg(slurm_msg_t *msg)
 	if (config_update != slurmctld_conf.last_update) {
 		char *sched_params = slurm_get_sched_params();
 		int time_limit;
-		char *tmp_ptr;
+		const char *tmp_ptr;
 
 		defer_sched = (sched_params &&
 			       xstrcasestr(sched_params, "defer"));

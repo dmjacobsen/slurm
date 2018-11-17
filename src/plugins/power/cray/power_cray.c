@@ -233,7 +233,8 @@ static char *_node_name2nid(char *node_name)
 /* Parse PowerParameters configuration */
 static void _load_config(void)
 {
-	char *end_ptr = NULL, *sched_params, *tmp_ptr;
+	char *end_ptr = NULL, *sched_params;
+	const char *tmp_ptr;
 
 	debug_flag = slurm_get_debug_flags();
 	sched_params = slurm_get_power_parameters();
@@ -254,10 +255,11 @@ static void _load_config(void)
 
 	xfree(capmc_path);
 	if ((tmp_ptr = xstrcasestr(sched_params, "capmc_path="))) {
+		char *tmp = NULL;
 		capmc_path = xstrdup(tmp_ptr + 11);
-		tmp_ptr = strchr(capmc_path, ',');
-		if (tmp_ptr)
-			tmp_ptr[0] = '\0';
+		tmp = strchr(capmc_path, ',');
+		if (tmp)
+			tmp[0] = '\0';
 	} else {
 		capmc_path = xstrdup(DEFAULT_CAPMC_PATH);
 	}

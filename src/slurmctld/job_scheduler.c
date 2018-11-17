@@ -959,7 +959,8 @@ static int _schedule(uint32_t job_limit)
 #endif
 
 	if (sched_update != slurmctld_conf.last_update) {
-		char *sched_params, *tmp_ptr;
+		char *sched_params;
+		const char *tmp_ptr;
 		char *sched_type = slurm_get_sched_type();
 		char *prio_type = slurm_get_priority_type();
 		if ((xstrcmp(sched_type, "sched/builtin") == 0) &&
@@ -3218,7 +3219,8 @@ static bool _scan_depend(List dependency_list, uint32_t job_id)
 	struct depend_spec *dep_ptr;
 
 	if (sched_update != slurmctld_conf.last_update) {
-		char *sched_params, *tmp_ptr;
+		char *sched_params;
+		const char *tmp_ptr;
 
 		sched_params = slurm_get_sched_params();
 		if (sched_params &&
