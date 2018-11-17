@@ -156,10 +156,6 @@ static void  _opt_list(void);
 /* verify options sanity  */
 static bool _opt_verify(void);
 
-static void _process_env_var(env_vars_t *e, const char *val);
-
-static uint16_t _parse_pbs_mail_type(const char *arg);
-
 static void _fullpath(char **filename, const char *cwd);
 static void _parse_pbs_resource_list(char *rl);
 static void _set_options(int argc, char **argv);
@@ -361,7 +357,7 @@ static void _opt_default(bool first_pass)
  */
 struct env_vars {
 	const char *var;
-	int *(set_func)(slurm_opt_t *, const char *);
+	int (*set_func)(slurm_opt_t *, const char *, const char *, bool);
 	int eval_pass;
 	int exit_on_error;
 };
@@ -420,7 +416,7 @@ env_vars_t env_vars[] = {
   {"SBATCH_USE_MIN_NODES", &arg_set_use_min_nodes,	0,	0 },
   {"SBATCH_WAIT",          &arg_set_wait,		0,	0 },
   {"SBATCH_WAIT_ALL_NODES",&arg_set_wait_all_nodes,	0,	0 },
-  {"SBATCH_WAIT4SWITCH",   &arg_setcomp_wait4switch,	0,	0 },
+  {"SBATCH_WAIT4SWITCH",   &arg_setcomp_req_wait4switch,0,	0 },
   {"SBATCH_WCKEY",         &arg_set_wckey,		0,	0 },
   {NULL, NULL, 0, 0 }
 };
@@ -1054,10 +1050,7 @@ static bool _opt_wrpr_batch_script(const char *file, const void *body,
 
 static void _set_options(int argc, char **argv)
 {
-	int opt_char, option_index = 0, max_val = 0, i;
-	long long priority;
-	char *tmp;
-
+	int opt_char, option_index = 0;
 	struct option *optz = spank_option_table_create(long_options);
 
 	if (!optz) {
@@ -1574,7 +1567,7 @@ static void _set_pbs_options(int argc, char **argv)
 		case 'm':
 			if (!optarg) /* CLANG Fix */
 				break;
-			arg_set_mail_type(&opt, optarg, "mail_options", true);
+			arg_set_pbsmail_type(&opt, optarg, "mail_options", true);
 			break;
 		case 'M':
 			arg_set_mail_user(&opt, optarg, "mail_user_list", false);
@@ -1609,6 +1602,7 @@ static void _set_pbs_options(int argc, char **argv)
 			xstrfmtcat(sbopt.export_env, "%s%s", sep, optarg);
 			arg_set_export(&opt, temp, "variable_list", false);
 			xfree(temp);
+			xfree(curr);
 			break;
 		}
 		case 'V':
@@ -1788,7 +1782,7 @@ static void _parse_pbs_resource_list(char *rl)
 			}
 			mbytes = str_to_mbytes(temp);
 			xfree(temp);
-			arg_set_tmp_mb(&opt, temp, "file", true);
+			arg_set_tmp_mb(&opt, mbytes, "file", true);
 		} else if (!xstrncmp(rl+i, "host=", 5)) {
 			i+=5;
 			_get_next_pbs_option(rl, &i);
@@ -1909,10 +1903,11 @@ static void _parse_pbs_resource_list(char *rl)
 			i += 5;
 			temp = _get_pbs_option_value(rl, &i, ',');
 			if (temp) {
-				const char *curr = arg_get_constraints(&opt);
+				const char *curr = arg_get_constraint(&opt);
 				char *tmp = xstrdup_printf("%s,%s", curr, temp);
-				arg_set_constraints(&opt, tmp, "proc", false);
+				arg_set_constraint(&opt, tmp, "proc", false);
 				xfree(tmp);
+				xfree(curr);
 			}
 			xfree(temp);
 			_get_next_pbs_option(rl, &i);
@@ -1965,6 +1960,7 @@ static void _parse_pbs_resource_list(char *rl)
 				      sep, gpus);
 		arg_set_gres(&opt, temp, "gpu gres", false);
 		xfree(temp);
+		xfree(curr);
 	}
 }
 
@@ -2053,7 +2049,7 @@ static bool _opt_verify(void)
 	}
 
 	if (opt.cpus_set && (opt.pn_min_cpus < opt.cpus_per_task))
-		arg_set_mincpus_int(&opt, opt.cpus_per_task, false);
+		arg_set_mincpus_int(&opt, opt.cpus_per_task, "<internal>", false);
 
 	if ((opt.job_name == NULL) && (sbopt.script_argc > 0)) {
 		char *temp = base_name(sbopt.script_argv[0]);
@@ -2261,25 +2257,6 @@ static bool _opt_verify(void)
 	}
 
 	return verified;
-}
-
-static uint16_t _parse_pbs_mail_type(const char *arg)
-{
-	uint16_t rc = 0;
-
-	if (strchr(arg, 'b') || strchr(arg, 'B'))
-		rc |= MAIL_JOB_BEGIN;
-	if (strchr(arg, 'e') || strchr(arg, 'E'))
-		rc |= MAIL_JOB_END;
-	if (strchr(arg, 'a') || strchr(arg, 'A'))
-		rc |= MAIL_JOB_FAIL;
-
-	if (strchr(arg, 'n') || strchr(arg, 'N'))
-		rc = 0;
-	else if (!rc)
-		rc = INFINITE16;
-
-	return rc;
 }
 
 /* Functions used by SPANK plugins to read and write job environment

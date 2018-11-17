@@ -920,6 +920,26 @@ uint16_t parse_mail_type(const char *arg)
 
 	return rc;
 }
+
+static uint16_t _parse_pbs_mail_type(const char *arg)
+{
+        uint16_t rc = 0;
+
+        if (strchr(arg, 'b') || strchr(arg, 'B'))
+                rc |= MAIL_JOB_BEGIN;
+        if (strchr(arg, 'e') || strchr(arg, 'E'))
+                rc |= MAIL_JOB_END;
+        if (strchr(arg, 'a') || strchr(arg, 'A'))
+                rc |= MAIL_JOB_FAIL;
+
+        if (strchr(arg, 'n') || strchr(arg, 'N'))
+                rc = 0;
+        else if (!rc)
+                rc = INFINITE16;
+
+        return rc;
+}
+
 char *print_mail_type(const uint16_t type)
 {
 	static char buf[256];
@@ -2272,6 +2292,14 @@ extern int arg_set_gpus_per_node(slurm_opt_t *opt, const char *arg, const char *
 	return SLURM_SUCCESS;
 }
 
+extern int arg_set_gpus_per_socket(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
+	if (!arg)
+		return SLURM_ERROR;
+	xfree(opt->gpus_per_socket);
+	opt->gpus_per_socket = xstrdup(arg);
+	return SLURM_SUCCESS;
+}
+
 extern int arg_set_gpus_per_task(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	if (!arg)
 		return SLURM_ERROR;
@@ -2528,6 +2556,19 @@ extern int arg_set_mail_type(slurm_opt_t *opt, const char *arg, const char *labe
 	return SLURM_SUCCESS;
 }
 
+extern int arg_set_pbsmail_type(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
+	if (!arg)
+		return SLURM_ERROR;
+
+	opt->mail_type |= _parse_pbs_mail_type(arg);
+	if (opt->mail_type == INFINITE16) {
+		error("--%s=%s invalid", label, arg);
+		return SLURM_ERROR;
+	}
+
+	return SLURM_SUCCESS;
+}
+
 extern int arg_set_mail_user(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	if (!arg)
 		return SLURM_ERROR;
@@ -2548,17 +2589,24 @@ extern int arg_set_mcs_label(slurm_opt_t *opt, const char *arg, const char *labe
 }
 
 extern int arg_set_mem(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
+	uint64_t mbytes = 0;
 	if (!arg)
 		return SLURM_ERROR;
 
-	opt->pn_min_memory = (int64_t) str_to_mbytes2(arg);
+	mbytes = str_to_mbytes2(arg);
+	return arg_set_mem_mb(opt, mbytes, label, is_fatal);
+}
+
+extern int arg_set_mem_mb(slurm_opt_t *opt, uint64_t mbytes, const char *label, bool is_fatal) {
+
+	opt->pn_min_memory = (int64_t) mbytes;
 	if (opt->srun_opt) {
 		/* only srun does this */
 		opt->mem_per_cpu = NO_VAL64;
 	}
 
 	if (opt->pn_min_memory < 0)
-		return _arg_set_error(label, "invalid memory constraint", arg, is_fatal);
+		return _arg_set_error(label, "invalid memory constraint", "", is_fatal);
 	return SLURM_SUCCESS;
 }
 
@@ -3398,9 +3446,15 @@ extern int arg_set_time_min(slurm_opt_t *opt, const char *arg, const char *label
 }
 
 extern int arg_set_tmp(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
+	uint64_t mbytes = 0;
 	if (!arg)
 		return SLURM_ERROR;
-	opt->pn_min_tmp_disk = str_to_mbytes2(arg);
+	mbytes = str_to_mbytes2(arg);
+	return arg_set_tmp_mb(opt, mbytes, label, is_fatal);
+}
+
+extern int arg_set_tmp_mb(slurm_opt_t *opt, uint64_t mbytes, const char *label, bool is_fatal) {
+	opt->pn_min_tmp_disk = (int64_t) mbytes;
 	if (opt->pn_min_tmp_disk < 0)
 		return _arg_set_error(label, "invalid tmp value", "", is_fatal);
 	return SLURM_SUCCESS;
@@ -3569,4 +3623,26 @@ extern int arg_set_x11(slurm_opt_t *opt, const char *arg, const char *label, boo
 		opt->x11 = X11_FORWARD_ALL;
 
 	return SLURM_SUCCESS;
+}
+
+extern char *arg_get_constraint(slurm_opt_t *opt) {
+	if (opt && opt->constraints)
+		return xstrdup(opt->constraints);
+	return NULL;
+}
+
+extern char *arg_get_export(slurm_opt_t *opt) {
+	sbatch_opt_t *sbopt = opt->sbatch_opt;
+	srun_opt_t *sropt = opt->srun_opt;
+	if (sbopt && sbopt->export_env)
+		return xstrdup(sbopt->export_env);
+	if (sropt && sropt->export_env)
+		return xstrdup(sropt->export_env);
+	return NULL;
+}
+
+extern char *arg_get_gres(slurm_opt_t *opt) {
+	if (opt && opt->gres)
+		return xstrdup(opt->gres);
+	return NULL;
 }

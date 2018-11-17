@@ -244,6 +244,7 @@ extern int arg_set_gpu_bind(slurm_opt_t *opt, const char *arg, const char *label
 extern int arg_set_gpu_freq(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_gpus(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_gpus_per_node(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
+extern int arg_set_gpus_per_socket(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_gpus_per_task(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_gres(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_gres_flags(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
@@ -269,6 +270,7 @@ extern int arg_set_mail_type(slurm_opt_t *opt, const char *arg, const char *labe
 extern int arg_set_mail_user(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_mcs_label(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_mem(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
+extern int arg_set_mem_mb(slurm_opt_t *opt, uint64_t mbytes, const char *label, bool is_fatal);
 extern int arg_set_mem_bind(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_mem_per_cpu_mb(slurm_opt_t *opt, int64_t mbytes);
 extern int arg_set_mem_per_cpu(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
@@ -307,6 +309,7 @@ extern int arg_set_overcommit(slurm_opt_t *opt, const char *arg, const char *lab
 extern int arg_set_oversubscribe(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_parsable(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_partition(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
+extern int arg_set_pbsmail_type(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_power(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_preserve_env(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_preserve_slurm_env(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
@@ -343,6 +346,7 @@ extern int arg_set_threads_per_core(slurm_opt_t *opt, const char *arg, const cha
 extern int arg_set_time(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_time_min(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_tmp(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
+extern int arg_set_tmp_mb(slurm_opt_t *opt, uint64_t mbytes, const char *label, bool is_fatal);
 extern int arg_set_tres_per_job(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_uid(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_umask(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
@@ -355,4 +359,10 @@ extern int arg_set_wckey(slurm_opt_t *opt, const char *arg, const char *label, b
 extern int arg_set_workdir(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_wrap(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_x11(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
+extern int arg_setcomp_req_switch(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
+extern int arg_setcomp_req_wait4switch(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
+
+extern char *arg_get_constraint(slurm_opt_t *opt);
+extern char *arg_get_export(slurm_opt_t *opt);
+extern char *arg_get_gres(slurm_opt_t *opt);
 #endif /* !_PROC_ARGS_H */
