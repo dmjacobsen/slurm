@@ -2097,7 +2097,7 @@ static uint64_t _get_int(const char *my_str)
 static uint64_t _parse_msg_aggr_params(int type, char *params)
 {
 	uint64_t value = NO_VAL;
-	char *sub_str = NULL;
+	const char *sub_str = NULL;
 
 	if (!params)
 		return NO_VAL;

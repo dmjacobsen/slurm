@@ -180,7 +180,7 @@ extern List acct_gather_conf_values(void)
 extern int acct_gather_parse_freq(int type, char *freq)
 {
 	int freq_int = -1;
-	char *sub_str = NULL;
+	const char *sub_str = NULL;
 
 	if (!freq)
 		return freq_int;

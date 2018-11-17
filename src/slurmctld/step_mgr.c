@@ -788,7 +788,8 @@ static void _wake_pending_steps(struct job_record *job_ptr)
 		return;
 
 	if (config_start_count == -1) {
-		char *sched_params, *tmp_ptr;
+		char *sched_params;
+		const char *tmp_ptr;
 		long int param;
 		sched_params = slurm_get_sched_params();
 		config_start_count = 8;	

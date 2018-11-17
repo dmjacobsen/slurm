@@ -592,7 +592,8 @@ static uint32_t _max_switch_wait(uint32_t input_wait)
 {
 	static time_t sched_update = 0;
 	static uint32_t max_wait = 300;	/* default max_switch_wait, seconds */
-	char *sched_params, *tmp_ptr;
+	char *sched_params;
+	const char *tmp_ptr;
 	int i;
 
 	if (sched_update != slurmctld_conf.last_update) {
@@ -4736,7 +4737,8 @@ extern int job_allocate(job_desc_msg_t * job_specs, int immediate,
 {
 	static time_t sched_update = 0;
 	static int defer_sched = 0;
-	char *sched_params, *tmp_ptr;
+	char *sched_params;
+	const char *tmp_ptr;
 	int error_code, i;
 	bool no_alloc, top_prio, test_only, too_fragmented, independent;
 	struct job_record *job_ptr;
@@ -7150,7 +7152,8 @@ static bool _valid_array_inx(job_desc_msg_t *job_desc)
 static int _test_job_desc_fields(job_desc_msg_t * job_desc)
 {
 	static int max_script = -1;
-	char *sched_params, *tmp_ptr;
+	char *sched_params;
+	const char *tmp_ptr;
 
 	if (max_script == -1) {
 		max_script = 4 * 1024 * 1024;
