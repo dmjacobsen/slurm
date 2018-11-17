@@ -805,7 +805,6 @@ bool verify_hint(const char *arg, int *min_sockets, int *min_cores,
 		 cpu_bind_type_t *cpu_bind_type)
 {
 	char *buf, *p, *tok;
-
 	if (!arg)
 		return true;
 
@@ -2446,8 +2445,13 @@ extern int arg_set_jobid(slurm_opt_t *opt, const char *arg, const char *label, b
 		return SLURM_ERROR;
 
 	opt->jobid = parse_int(label, arg, true);
+	if (opt->srun_opt) {
+		/* we expect this in srun, so no warning */
+		opt->jobid_set = true;
+		return SLURM_SUCCESS;
+	}
 	if (!opt->salloc_opt) {
-		/* TODO this seems wrong, my guess is that salloc should also 
+		/* DMJ TODO this seems wrong, my guess is that salloc should also 
 		   set jobid_set */
 		info("WARNING: Creating SLURM job allocation from within "
 		     "another allocation");
