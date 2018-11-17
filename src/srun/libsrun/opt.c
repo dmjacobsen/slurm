@@ -1016,8 +1016,10 @@ static void _opt_env(int pack_offset, int pass)
 	env_vars_t *e   = env_vars;
 
 	while (e->var) {
-		if (e->eval_pass != pass)
+		if (e->eval_pass != pass) {
+			e++;
 			continue;
+		}
 		if ((val = getenv(e->var)))
 			(e->set_func)(&opt, val, e->var, (bool) e->exit_on_error);
 		if ((pack_offset >= 0) &&
