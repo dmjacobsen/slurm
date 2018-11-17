@@ -197,7 +197,6 @@ static void  _opt_env(int pass);
 static void  _opt_args(int argc, char **argv);
 static void  _opt_list(void);
 static bool  _opt_verify(void);
-static char *_read_file(char *fname);
 static void  _set_options(int argc, char **argv);
 static void  _usage(void);
 
@@ -421,14 +420,14 @@ static void _opt_default(void)
  */
 struct env_vars {
         const char *var;
-        int *(set_func)(slurm_opt_t *, const char *);
+	int (*set_func)(slurm_opt_t *, const char *, const char *, bool);
         int eval_pass;
         int exit_on_error;
 };
 
 env_vars_t env_vars[] = {
   {"SALLOC_ACCOUNT",       &arg_set_account,		0,	0 },
-  {"SALLOC_ACCTG_FREQ",    &arg_set_acct_greq,		0,	0 },
+  {"SALLOC_ACCTG_FREQ",    &arg_set_acctg_freq,		0,	0 },
   {"SALLOC_BELL",          &arg_set_bell,		0,	0 },
   {"SALLOC_BURST_BUFFER",  &arg_set_bb,			0,	0 },
   {"SALLOC_CLUSTERS",      &arg_set_clusters,		0,	0 },
@@ -438,7 +437,7 @@ env_vars_t env_vars[] = {
   {"SALLOC_CORE_SPEC",     &arg_set_core_spec,		0,	0 },
   {"SALLOC_CPU_FREQ_REQ",  &arg_set_cpu_freq,		0,	0 },
   {"SALLOC_CPUS_PER_GPU",  &arg_set_cpus_per_gpu,	0,	0 },
-  {"SALLOC_DEBUG",         &arg_set_debug,		0,	0 },
+  {"SALLOC_DEBUG",         &arg_set_verbose,		0,	0 },
   {"SALLOC_DELAY_BOOT",    &arg_set_delay_boot,		0,	0 },
   {"SALLOC_EXCLUSIVE",     &arg_set_exclusive,		0,	0 },
   {"SALLOC_GPUS",          &arg_set_gpus,		0,	0 },
@@ -452,7 +451,7 @@ env_vars_t env_vars[] = {
   {"SALLOC_HINT",          &arg_set_hint,		1,	1 },
   {"SLURM_HINT",           &arg_set_hint,		1,	1 },
   {"SALLOC_JOBID",         &arg_set_jobid,		0,	0 },
-  {"SALLOC_KILL_CMD",      &arg_set_kill_cmd,		0,	0 },
+  {"SALLOC_KILL_CMD",      &arg_set_kill_command,	0,	0 },
   {"SALLOC_MEM_BIND",      &arg_set_mem_bind,		0,	1 },
   {"SALLOC_MEM_PER_GPU",   &arg_set_mem_per_gpu,	0,	0 },
   {"SALLOC_NETWORK",       &arg_set_network,		0,	0 },
@@ -472,7 +471,7 @@ env_vars_t env_vars[] = {
   {"SALLOC_USE_MIN_NODES", &arg_set_use_min_nodes,	0,	0 },
   {"SALLOC_WAIT",          &arg_set_wait,		0,	0 },
   {"SALLOC_WAIT_ALL_NODES",&arg_set_wait_all_nodes,	0,	0 },
-  {"SALLOC_WAIT4SWITCH",   &arg_setcomp_wait4switch,	0,	0 },
+  {"SALLOC_WAIT4SWITCH",   &arg_setcomp_req_wait4switch,0,	0 },
   {"SALLOC_WCKEY",         &arg_set_wckey,		0,	0 },
   {NULL, NULL, 0, 0}
 };
@@ -503,9 +502,7 @@ static void _opt_env(int eval_pass)
 
 static void _set_options(int argc, char **argv)
 {
-	int opt_char, option_index = 0, max_val = 0, i;
-	char *tmp;
-	long long priority;
+	int opt_char, option_index = 0;
 	static struct option long_options[] = {
 		{"account",       required_argument, 0, 'A'},
 		{"extra-node-info", required_argument, 0, 'B'},
@@ -612,7 +609,6 @@ static void _set_options(int argc, char **argv)
 	char *opt_string =
 		"+A:B:c:C:d:D:F:G:hHI::J:k::K::L:m:M:n:N:Op:P:q:QsS:t:uU:vVw:W:x:";
 	char *pos_delimit;
-
 	struct option *optz = spank_option_table_create(long_options);
 
 	if (!optz) {
@@ -638,7 +634,7 @@ static void _set_options(int argc, char **argv)
 			arg_set_extra_node_info(&opt, optarg, "--extra-node-info", false);
 			break;
 		case 'c':
-			arg_set_cpus_per_task(&oprt, optarg, "--cpus-per-task", true);
+			arg_set_cpus_per_task(&opt, optarg, "--cpus-per-task", true);
 			break;
 		case 'C':
 			arg_set_constraint(&opt, optarg, "--constraint", false);
