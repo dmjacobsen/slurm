@@ -514,6 +514,7 @@ static void _opt_env(int eval_pass)
 
 			(e->set_func)(&opt, val, e->var, (bool) e->exit_on_error);
 		}
+		e++;
 	}
 
 	/* Process spank env options */
