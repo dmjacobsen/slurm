@@ -2920,6 +2920,7 @@ extern int arg_set_nodes_fromenv(slurm_opt_t *opt, const char *arg, const char *
 extern int arg_set_ntasks_int(slurm_opt_t *opt, int ntasks, const char *label, bool is_fatal) {
 	sbatch_opt_t *sbopt = opt->sbatch_opt;
 	opt->ntasks = ntasks;
+	opt->ntasks_set = true;
 	if (sbopt)
 		sbopt->pack_env->ntasks = opt->ntasks;
 
