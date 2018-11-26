@@ -49,7 +49,7 @@
 extern struct option *option_table_create(struct slurm_long_option **, int pass);
 extern void option_table_destroy(struct option *);
 
-extern void arg_setoptions(slurm_opt_t *opt, int argc, char **argv);
+extern int arg_setoptions(slurm_opt_t *opt, int pass, int argc, char **argv);
 
 /* convert task state ID to equivalent string */
 extern char *format_task_dist_states(task_dist_states_t t);

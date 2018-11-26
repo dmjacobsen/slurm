@@ -112,6 +112,18 @@ static struct slurm_long_option opt_common_account = {
 	.help_long = "charge job to specified account",
 };
 
+static struct slurm_long_option opt_common_account_deprecated = {
+	.opt_group = OPT_GRP_PARRUN,
+	.name      = "account",
+	.get_func  = &arg_get_account,
+	.set_func  = &arg_set_account,
+	.pass      = 1,
+	.has_arg   = required_argument,
+	.opt_val   = 'U',
+	.help_short = "name",
+	.help_long = "charge job to specified account",
+};
+
 static struct slurm_long_option opt_common_bb = {
 	.opt_group = OPT_GRP_PARRUN,
 	.name      = "bb",
@@ -271,6 +283,17 @@ static struct slurm_long_option opt_common_dependency = {
 	.help_short = "type:jobid",
 	.help_long = "defer job until condition on jobid is satisfied",
 };
+
+static struct slurm_long_option opt_common_dependency_deprecated = {
+	.opt_group = OPT_GRP_UNKNOWN,
+	.name      = "dependency_deprecated",
+	.get_func  = &arg_get_dependency,
+	.set_func  = &arg_set_dependency,
+	.pass      = 1,
+	.has_arg   = required_argument,
+	.opt_val   = 'P',
+};
+
 
 static struct slurm_long_option opt_common_distribution = {
 	.opt_group = OPT_GRP_PARRUN,
@@ -1366,16 +1389,6 @@ static struct slurm_long_option opt_sbatch_cores_per_socket = {
 	.help_long = "number of cores per socket to allocate",
 };
 
-static struct slurm_long_option opt_sbatch_dependency_deprecated = {
-	.opt_group = OPT_GRP_UNKNOWN,
-	.name      = "dependency_deprecated",
-	.get_func  = &arg_get_dependency,
-	.set_func  = &arg_set_dependency,
-	.pass      = 1,
-	.has_arg   = required_argument,
-	.opt_val   = 'P',
-};
-
 static struct slurm_long_option opt_sbatch_error = {
 	.opt_group = OPT_GRP_PARRUN,
 	.name      = "error",
@@ -2059,16 +2072,6 @@ static struct slurm_long_option opt_srun_debugger_test = {
 	.pass      = 1,
 	.has_arg   = no_argument,
 	.opt_val   = LONG_OPT_DEBUG_TS,
-};
-
-static struct slurm_long_option opt_srun_dependency_deprecated = {
-	.opt_group = OPT_GRP_UNKNOWN,
-	.name      = "dependency_deprecated",
-	.get_func  = &arg_get_dependency,
-	.set_func  = &arg_set_dependency,
-	.pass      = 1,
-	.has_arg   = required_argument,
-	.opt_val   = 'P',
 };
 
 static struct slurm_long_option opt_srun_disable_status = {
@@ -2786,6 +2789,7 @@ static struct slurm_long_option opt_srun_wait = {
 
 struct slurm_long_option *srun_options[] = {
 	&opt_common_account,
+	&opt_common_account_deprecated,
 	&opt_common_bb,
 	&opt_common_bbf,
 	&opt_common_begin,
@@ -2799,6 +2803,7 @@ struct slurm_long_option *srun_options[] = {
 	&opt_common_deadline,
 	&opt_common_delay_boot,
 	&opt_common_dependency,
+	&opt_common_dependency_deprecated,
 	&opt_common_distribution,
 	&opt_common_exclude,
 	&opt_common_gpu_bind,
@@ -2855,7 +2860,6 @@ struct slurm_long_option *srun_options[] = {
 	&opt_srun_cpu_bind,
 	&opt_srun_cpu_bind,
 	&opt_srun_debugger_test,
-	&opt_srun_dependency_deprecated,
 	&opt_srun_disable_status,
 	&opt_srun_epilog,
 	&opt_srun_error,
@@ -2922,6 +2926,7 @@ struct slurm_long_option *srun_options[] = {
 };
 struct slurm_long_option *salloc_options[] = {
 	&opt_common_account,
+	&opt_common_account_deprecated,
 	&opt_common_bb,
 	&opt_common_bbf,
 	&opt_common_begin,
@@ -2935,6 +2940,7 @@ struct slurm_long_option *salloc_options[] = {
 	&opt_common_deadline,
 	&opt_common_delay_boot,
 	&opt_common_dependency,
+	&opt_common_dependency_deprecated,
 	&opt_common_distribution,
 	&opt_common_exclude,
 	&opt_common_gpu_bind,
@@ -3023,6 +3029,7 @@ struct slurm_long_option *salloc_options[] = {
 };
 struct slurm_long_option *sbatch_options[] = {
 	&opt_common_account,
+	&opt_common_account_deprecated,
 	&opt_common_bb,
 	&opt_common_bbf,
 	&opt_common_begin,
@@ -3036,6 +3043,7 @@ struct slurm_long_option *sbatch_options[] = {
 	&opt_common_deadline,
 	&opt_common_delay_boot,
 	&opt_common_dependency,
+	&opt_common_dependency_deprecated,
 	&opt_common_distribution,
 	&opt_common_exclude,
 	&opt_common_gpu_bind,
@@ -3088,7 +3096,6 @@ struct slurm_long_option *sbatch_options[] = {
 	&opt_sbatch_cluster_constraint,
 	&opt_sbatch_clusters,
 	&opt_sbatch_cores_per_socket,
-	&opt_sbatch_dependency_deprecated,
 	&opt_sbatch_error,
 	&opt_sbatch_exclusive,
 	&opt_sbatch_export,
