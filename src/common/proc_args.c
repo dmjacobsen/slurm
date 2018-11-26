@@ -61,6 +61,7 @@
 #include <sys/types.h>
 #include <sys/utsname.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include "src/api/pmi_server.h"
 #include "src/common/cpu_frequency.h"
@@ -68,6 +69,7 @@
 #include "src/common/list.h"
 #include "src/common/log.h"
 #include "src/common/parse_time.h"
+#include "src/common/plugstack.h"
 #include "src/common/proc_args.h"
 #include "src/common/slurm_acct_gather_profile.h"
 #include "src/common/slurm_protocol_api.h"
@@ -78,6 +80,387 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 
+#if 0
+#define LONG_OPT_MEM_BIND    0x102
+#define LONG_OPT_JOBID       0x105
+#define LONG_OPT_TMP         0x106
+#define LONG_OPT_MEM         0x107
+#define LONG_OPT_MINCPU      0x108
+#define LONG_OPT_CONT        0x109
+#define LONG_OPT_UID         0x10a
+#define LONG_OPT_GID         0x10b
+#define LONG_OPT_MINSOCKETS  0x10c
+#define LONG_OPT_MINCORES    0x10d
+#define LONG_OPT_MINTHREADS  0x10e
+#define LONG_OPT_CORE	     0x10f
+#define LONG_OPT_EXCLUSIVE   0x111
+#define LONG_OPT_BEGIN       0x112
+#define LONG_OPT_MAIL_TYPE   0x113
+#define LONG_OPT_MAIL_USER   0x114
+#define LONG_OPT_NICE        0x115
+#define LONG_OPT_BELL        0x116
+#define LONG_OPT_NO_BELL     0x117
+#define LONG_OPT_COMMENT     0x118
+#define LONG_OPT_REBOOT      0x119
+#define LONG_OPT_BLRTS_IMAGE     0x120
+#define LONG_OPT_LINUX_IMAGE     0x121
+#define LONG_OPT_MLOADER_IMAGE   0x122
+#define LONG_OPT_RAMDISK_IMAGE   0x123
+#define LONG_OPT_NOSHELL         0x124
+#define LONG_OPT_GET_USER_ENV    0x125
+#define LONG_OPT_NETWORK         0x126
+#define LONG_OPT_BURST_BUFFER_SPEC  0x128
+#define LONG_OPT_BURST_BUFFER_FILE  0x129
+#define LONG_OPT_SOCKETSPERNODE  0x130
+#define LONG_OPT_CORESPERSOCKET  0x131
+#define LONG_OPT_THREADSPERCORE  0x132
+#define LONG_OPT_NTASKSPERNODE   0x136
+#define LONG_OPT_NTASKSPERSOCKET 0x137
+#define LONG_OPT_NTASKSPERCORE   0x138
+#define LONG_OPT_MEM_PER_CPU     0x13a
+#define LONG_OPT_HINT            0x13b
+#define LONG_OPT_ACCTG_FREQ      0x13c
+#define LONG_OPT_WCKEY           0x13d
+#define LONG_OPT_RESERVATION     0x13e
+#define LONG_OPT_SIGNAL          0x13f
+#define LONG_OPT_TIME_MIN        0x140
+#define LONG_OPT_GRES            0x141
+#define LONG_OPT_WAIT_ALL_NODES  0x142
+#define LONG_OPT_REQ_SWITCH      0x143
+#define LONG_OPT_PROFILE         0x144
+#define LONG_OPT_CPU_FREQ        0x145
+#define LONG_OPT_GRES_FLAGS      0x146
+#define LONG_OPT_SPREAD_JOB      0x147
+#define LONG_OPT_PRIORITY        0x160
+#define LONG_OPT_POWER           0x162
+#define LONG_OPT_THREAD_SPEC     0x163
+#define LONG_OPT_USE_MIN_NODES   0x164
+#define LONG_OPT_MCS_LABEL       0x165
+#define LONG_OPT_DEADLINE        0x166
+#define LONG_OPT_DELAY_BOOT      0x167
+#define LONG_OPT_CLUSTER_CONSTRAINT 0x168
+#define LONG_OPT_X11             0x170
+#define LONG_OPT_CPUS_PER_GPU    0x171
+#define LONG_OPT_GPU_BIND        0x172
+#define LONG_OPT_GPU_FREQ        0x173
+#define LONG_OPT_GPUS            0x174
+#define LONG_OPT_GPUS_PER_NODE   0x175
+#define LONG_OPT_GPUS_PER_SOCKET 0x176
+#define LONG_OPT_GPUS_PER_TASK   0x177
+#define LONG_OPT_MEM_PER_GPU     0x178
+
+/* THIS PROBABLY BELONGS IN slurm_opt.c */
+struct slurm_long_option salloc_opts[] = {
+	{
+		.name		= "account",
+		.get_func	= &arg_get_account,
+		.set_func	= &arg_set_account,
+		.has_arg	= required_argument, 
+		.opt_val	= 'A'
+	}, {
+		.name		= "extra-node-info",
+		.get_func	= &arg_get_extra_node_info,
+		.set_func	= &arg_set_extra_node_info,
+		.has_arg	= required_argument,
+		.opt_val	= 'B'
+	}, {
+		.name		= "cpus-per-task",
+		.get_func	= &arg_get_cpus_per_task,
+		.set_func	= &arg_set_cpus_per_task,
+		.exit_on_error	= true,
+		.has_arg	= required_argument,
+		.opt_val	= 'c'
+	},
+	{"constraint",    &arg_get_constraint, 		&arg_set_constraint, false,
+			  required_argument, 0, 'C'},
+	{"cluster-constraint",&arg_get_cluster_constraint,&arg_set_cluster_constraint, false,
+			  required_argument, 0, LONG_OPT_CLUSTER_CONSTRAINT},
+	{"dependency",    &arg_get_dependency,		&arg_set_dependency, false,
+			  required_argument, 0, 'd'},
+	{"chdir",         &arg_get_chdir,		&arg_set_chdir, false,
+			  required_argument, 0, 'D'},
+	{"nodefile",      &arg_get_nodefile,		&arg_set_nodefile, true,
+			  required_argument, 0, 'F'},
+	{"gpus",          &arg_get_gpus,		&arg_set_gpus, false,
+			  required_argument, 0, 'G'},
+	{"help",          NULL,				NULL, true, /* DMJ set_func was _arg_help */
+			  no_argument,       0, 'h'},
+	{"hold",          &arg_get_hold,		&arg_set_hold, false,
+			  no_argument,       0, 'H'},
+	{"immediate",     &arg_get_immediate,		&arg_set_immediate, false,
+			  optional_argument, 0, 'I'},
+	{"job-name",      &arg_get_job_name,		&arg_set_job_name, false,
+			  required_argument, 0, 'J'},
+	{"no-kill",       &arg_get_no_kill,		&arg_set_no_kill, false,
+			  no_argument,       0, 'k'},
+	{"kill-command",  &arg_get_kill_command,	&arg_set_kill_command, false,
+			  optional_argument, 0, 'K'},
+	{"licenses",      &arg_get_licenses,		&arg_set_licenses, false,
+			  required_argument, 0, 'L'},
+	{"distribution",  &arg_get_distribution,	&arg_set_distribution, false,
+			  required_argument, 0, 'm'},
+	{"cluster",       &arg_get_cluster,		&arg_set_cluster, false,
+			  required_argument, 0, 'M'},
+	{"clusters",      &arg_get_cluster,		&arg_set_cluster, false,
+			  required_argument, 0, 'M'},
+	{"tasks",         &arg_get_ntasks,		&arg_set_ntasks, false,
+			  required_argument, 0, 'n'},
+	{"ntasks",        &arg_get_ntasks,		&arg_set_ntasks, false,
+			  required_argument, 0, 'n'},
+	{"nodes",         &arg_get_nodes,		&arg_set_nodes, true,
+			  required_argument, 0, 'N'},
+	{"overcommit",    &arg_get_overcommit,		&arg_set_overcommit, false,
+			  no_argument,       0, 'O'},
+	{"oversubscribe", &arg_get_oversubscribe,	&arg_set_oversubscribe, false,
+			  no_argument,       0, 's'},
+	{"partition",     &arg_get_partition,		&arg_set_partition, false,
+			  required_argument, 0, 'p'},
+	{"qos",		  &arg_get_qos,			&arg_set_qos, false,
+			  required_argument, 0, 'q'},
+	{"quiet",         &arg_get_quiet,		&arg_set_quiet, false,
+			  no_argument,       0, 'Q'},
+	{"share",         &arg_get_share,		&arg_set_share, false,
+			  no_argument,       0, 's'},
+	{"core-spec",     &arg_get_core_spec,		&arg_set_core_spec, false,
+			  required_argument, 0, 'S'},
+	{"time",          &arg_get_time,		&arg_set_time, true,
+			  required_argument, 0, 't'},
+	{"usage",         NULL,				NULL, true, /* DMJ set_func was _arg_usage */
+			  no_argument,       0, 'u'},
+	{"verbose",       &arg_get_verbose,		&arg_set_verbose, false,
+			  no_argument,       0, 'v'},
+	{"version",       NULL,				&arg_version, true,
+			  no_argument,       0, 'V'},
+	{"nodelist",      &arg_get_nodelist,		&arg_set_nodelist, false,
+			  required_argument, 0, 'w'},
+	{"wait",          &arg_get_wait,		&arg_set_wait, false,
+			  required_argument, 0, 'W'},
+	{"exclude",       &arg_get_exclude,		&arg_set_exclude, true,
+			  required_argument, 0, 'x'},
+	{"acctg-freq",    &arg_get_acctg_freq,		&arg_set_acctg_freq, false,
+			  required_argument, 0, LONG_OPT_ACCTG_FREQ},
+	{"begin",         &arg_get_begin,		&arg_set_begin, true,
+			  required_argument, 0, LONG_OPT_BEGIN},
+	{"bb",            &arg_get_bb,			&arg_set_bb, false,
+			  required_argument, 0, LONG_OPT_BURST_BUFFER_SPEC},
+	{"bbf",           &arg_get_bbf,			&arg_set_bbf, false,
+			  required_argument, 0, LONG_OPT_BURST_BUFFER_FILE},
+	{"bell",          &arg_get_bell,		&arg_set_bell, false,
+			  no_argument,       0, LONG_OPT_BELL},
+	{"comment",       &arg_get_comment,		&arg_set_comment, false,
+			  required_argument, 0, LONG_OPT_COMMENT},
+	{"contiguous",    &arg_get_contiguous,		&arg_set_contiguous, false,
+			  no_argument,       0, LONG_OPT_CONT},
+	{"cores-per-socket", &arg_get_cores_per_socket,	&arg_set_cores_per_socket, true,
+			  required_argument, 0, LONG_OPT_CORESPERSOCKET},
+	{"cpu-freq",      &arg_get_cpu_freq,		&arg_set_cpu_freq, false,
+			  required_argument, 0, LONG_OPT_CPU_FREQ},
+	{"cpus-per-gpu",  &arg_get_cpus_per_gpu,	&arg_set_cpus_per_gpu, true,
+			  required_argument, 0, LONG_OPT_CPUS_PER_GPU},
+	{"deadline",      &arg_get_deadline,		&arg_set_deadline, true,
+			  required_argument, 0, LONG_OPT_DEADLINE},
+	{"delay-boot",    &arg_get_delay_boot,		&arg_set_delay_boot, true,
+			  required_argument, 0, LONG_OPT_DELAY_BOOT},
+	{"exclusive",     &arg_get_exclusive,		&arg_set_exclusive, true,
+			  optional_argument, 0, LONG_OPT_EXCLUSIVE},
+	{"get-user-env",  &arg_get_get_user_env,	&arg_set_get_user_env, false,
+			  optional_argument, 0, LONG_OPT_GET_USER_ENV},
+	{"gid",           &arg_get_gid,			&arg_set_gid, true,
+			  required_argument, 0, LONG_OPT_GID},
+	{"gpu-bind",      &arg_get_gpu_bind,		&arg_set_gpu_bind, false,
+			  required_argument, 0, LONG_OPT_GPU_BIND},
+	{"gpu-freq",      &arg_get_gpu_freq,		&arg_set_gpu_freq, false,
+			  required_argument, 0, LONG_OPT_GPU_FREQ},
+	{"gpus-per-node", &arg_get_gpus_per_node,	&arg_set_gpus_per_node, false,
+			  required_argument, 0, LONG_OPT_GPUS_PER_NODE},
+	{"gpus-per-socket",&arg_get_gpus_per_socket,	&arg_set_gpus_per_socket, false,
+			  required_argument, 0, LONG_OPT_GPUS_PER_SOCKET},
+	{"gpus-per-task", &arg_get_gpus_per_task,	&arg_set_gpus_per_task, false,
+			  required_argument, 0, LONG_OPT_GPUS_PER_TASK},
+	{"gres",          &arg_get_gres,		&arg_set_gres, false,
+			  required_argument, 0, LONG_OPT_GRES},
+	{"gres-flags",    &arg_get_gres_flags,		&arg_set_gres_flags, true,
+			  required_argument, 0, LONG_OPT_GRES_FLAGS},
+	{"hint",          &arg_get_hint,		&arg_set_hint, false,
+			  required_argument, 0, LONG_OPT_HINT},
+	{"jobid",         &arg_get_jobid,		&arg_set_jobid, false,
+			  required_argument, 0, LONG_OPT_JOBID},
+	{"mail-type",     &arg_get_mail_type,		&arg_set_mail_type, true,
+			  required_argument, 0, LONG_OPT_MAIL_TYPE},
+	{"mail-user",     &arg_get_mail_user,		&arg_set_mail_user, false,
+			  required_argument, 0, LONG_OPT_MAIL_USER},
+	{"mcs-label",     &arg_get_mcs_label,		&arg_set_mcs_label, false,
+			  required_argument, 0, LONG_OPT_MCS_LABEL},
+	{"mem",           &arg_get_mem,			&arg_set_mem, true,
+			  required_argument, 0, LONG_OPT_MEM},
+	{"mem-per-cpu",   &arg_get_mem_per_cpu,		&arg_set_mem_per_cpu, true,
+			  required_argument, 0, LONG_OPT_MEM_PER_CPU},
+	{"mem-per-gpu",   &arg_get_mem_per_gpu,		&arg_set_mem_per_gpu, true,
+			  required_argument, 0, LONG_OPT_MEM_PER_GPU},
+	{"mem-bind",      &arg_get_mem_bind,		&arg_set_mem_bind, false,
+			  required_argument, 0, LONG_OPT_MEM_BIND},
+	{"mem_bind",      &arg_get_mem_bind,		&arg_set_mem_bind, false,
+			  required_argument, 0, LONG_OPT_MEM_BIND},
+	{"mincores",      &arg_get_mincores,		&arg_set_mincores, true,
+			  required_argument, 0, LONG_OPT_MINCORES},
+	{"mincpus",       &arg_get_mincpus,		&arg_set_mincpus, false,
+			  required_argument, 0, LONG_OPT_MINCPU},
+	{"minsockets",    &arg_get_minsockets,		&arg_set_minsockets, true,
+			  required_argument, 0, LONG_OPT_MINSOCKETS},
+	{"minthreads",    &arg_get_minthreads,		&arg_set_minthreads, true,
+			  required_argument, 0, LONG_OPT_MINTHREADS},
+	{"network",       &arg_get_network,		&arg_set_network, false,
+			  required_argument, 0, LONG_OPT_NETWORK},
+	{"nice",          &arg_get_nice,		&arg_set_nice, false,
+			  optional_argument, 0, LONG_OPT_NICE},
+	{"priority",      &arg_get_priority,		&arg_set_priority, true,
+			  required_argument, 0, LONG_OPT_PRIORITY},
+	{"no-bell",       &arg_get_no_bell,		&arg_set_no_bell, false,
+			  no_argument,       0, LONG_OPT_NO_BELL},
+	{"no-shell",      &arg_get_no_shell,		&arg_set_no_shell, false,
+			  no_argument,       0, LONG_OPT_NOSHELL},
+	{"ntasks-per-core",&arg_get_ntasks_per_core,	&arg_set_ntasks_per_core, false,
+			  required_argument, 0, LONG_OPT_NTASKSPERCORE},
+	{"ntasks-per-node",&arg_get_ntasks_per_node,	&arg_set_ntasks_per_node, false,
+			  required_argument, 0, LONG_OPT_NTASKSPERNODE},
+	{"ntasks-per-socket",&arg_get_ntasks_per_socket, &arg_set_ntasks_per_socket, false,
+			  required_argument, 0, LONG_OPT_NTASKSPERSOCKET},
+	{"power",         &arg_get_power,		&arg_set_power, false,
+			  required_argument, 0, LONG_OPT_POWER},
+	{"profile",       &arg_get_profile,		&arg_set_profile, false,
+			  required_argument, 0, LONG_OPT_PROFILE},
+	{"reboot",	  &arg_get_reboot,		&arg_set_reboot, false,
+			  no_argument,       0, LONG_OPT_REBOOT},
+	{"reservation",   &arg_get_reservation,		&arg_set_reservation, false,
+			  required_argument, 0, LONG_OPT_RESERVATION},
+	{"signal",        &arg_get_signal,		&arg_set_signal, true,
+			  required_argument, 0, LONG_OPT_SIGNAL},
+	{"sockets-per-node",&arg_get_sockets_per_node,	&arg_set_sockets_per_node, true,
+			  required_argument, 0, LONG_OPT_SOCKETSPERNODE},
+	{"spread-job",    &arg_get_spread_job,		&arg_set_spread_job, false,
+			  no_argument,       0, LONG_OPT_SPREAD_JOB},
+	{"switches",      &arg_get_switches,		&arg_set_switches, false,
+			  required_argument, 0, LONG_OPT_REQ_SWITCH},
+	{"tasks-per-node",&arg_get_tasks_per_node,	&arg_set_tasks_per_node, false,
+			  required_argument, 0, LONG_OPT_NTASKSPERNODE},
+	{"thread-spec",   &arg_get_thread_spec,		&arg_set_thread_spec, false,
+			  required_argument, 0, LONG_OPT_THREAD_SPEC},
+	{"time-min",      &arg_get_time_min,		&arg_set_time_min, true,
+			  required_argument, 0, LONG_OPT_TIME_MIN},
+	{"threads-per-core",&arg_get_threads_per_core,	&arg_set_threads_per_core, true,
+			  required_argument, 0, LONG_OPT_THREADSPERCORE},
+	{"tmp",           &arg_get_tmp,			&arg_set_tmp, true,
+			  required_argument, 0, LONG_OPT_TMP},
+	{"uid",           &arg_get_uid,			&arg_set_uid, true,
+			  required_argument, 0, LONG_OPT_UID},
+	{"use-min-nodes", &arg_get_use_min_nodes,	&arg_set_use_min_nodes, false,
+			  no_argument,       0, LONG_OPT_USE_MIN_NODES},
+	{"wait-all-nodes",&arg_get_wait_all_nodes,	&arg_set_wait_all_nodes, true,
+			  required_argument, 0, LONG_OPT_WAIT_ALL_NODES},
+	{"wckey",         &arg_get_wckey,		&arg_set_wckey, false,
+			  required_argument, 0, LONG_OPT_WCKEY},
+#ifdef WITH_SLURM_X11
+	{"x11",           &arg_get_x11,			&arg_set_x11, false,
+			  optional_argument, 0, LONG_OPT_X11},
+#endif
+	{NULL,            NULL,				NULL, false,
+			  0,                 0, 0}
+};
+#endif
+
+#include "src/common/optz.h"
+extern struct option *option_table_create(struct slurm_long_option **base, int pass) {
+	/* generate an option table from slurm_long_option.
+ 	 * this could have used the optz_* functions, but those appear to be
+ 	 * rather special purpose for spank operations
+ 	 */
+
+	struct slurm_long_option **ptr;
+	struct option *opts, *optr;
+	int count = 0;
+
+	/* how many options are there? */
+	for (count = 0, ptr = base; ptr && *ptr; ptr++) {
+		if ((*ptr)->pass == pass || (*ptr)->pass < 0)
+			count++;
+	}
+
+	/* allocate and initialize table all at once *
+	 * the +1 on the counts is to add a terminator to the table which is
+ 	 * initilized as a side effect (or the main point) of the memset
+ 	 */
+	opts = xmalloc(sizeof(struct option) * (count + 1));
+	memset(opts, 0, sizeof(struct option) * (count + 1));
+
+	/* subset slurm_long_option into the option table */
+	for (ptr = base, optr = opts; ptr && *ptr; ptr++, optr++) {
+		if ((*ptr)->pass != pass && (*ptr)->pass >= 0)
+			continue;
+		optr->name = xstrdup((*ptr)->name);
+		optr->has_arg = (*ptr)->has_arg;
+		optr->val = (*ptr)->opt_val;
+
+		/* flag may require better handling, but is not a used
+ 		 * feature in slurm, thus copying NULL is fine */
+		optr->flag = (*ptr)->flag;
+	}
+	return opts;
+}
+
+extern void option_table_destroy(struct option *opts) {
+	struct option *ptr;
+
+	for (ptr = opts; ptr && ptr->name; ptr++) {
+		xfree(ptr->name);
+	}
+	xfree(opts);
+}
+
+extern void arg_setoptions(slurm_opt_t *opt, int argc, char **argv)
+{
+	int opt_char, option_index = 0;
+	struct slurm_long_option **optpptr;
+	struct option *long_options = option_table_create(salloc_options, 0);
+	char *opt_string =
+		"+A:B:c:C:d:D:F:G:hHI::J:kK::L:m:M:n:N:Op:P:q:QsS:t:uU:vVw:W:x:";
+	struct option *optz = spank_option_table_create(long_options);
+	bool found;
+	char *arg;
+
+	if (!optz) {
+		error("Unable to create options table");
+		exit(1);
+	}
+
+	opt->progname = xbasename(argv[0]);
+	optind = 0;
+	while ((opt_char = getopt_long(argc, argv, opt_string,
+				      optz, &option_index)) != -1) {
+		found = false;
+		for (optpptr = salloc_options; optpptr && *optpptr; optpptr++) {
+			struct slurm_long_option *optptr = *optpptr;
+			if (optptr->opt_val != opt_char)
+				continue;
+			arg = xstrdup_printf("--%s", optptr->name);
+			(optptr->set_func)(opt, optarg, arg, optptr->exit_on_error);
+			xfree(arg);
+			found = true;
+		}
+		if (found)
+			continue;
+		
+		if (opt_char == '?') {
+			fprintf(stderr, "Try \"salloc --help\" for more "
+				"information\n");
+			exit(1);
+		}
+		if (spank_process_option(opt_char, optarg) < 0)
+			exit(1);
+	}
+
+	spank_option_table_destroy(optz);
+	option_table_destroy(long_options);
+}
 
 /* print this version of Slurm */
 void print_slurm_version(void)
@@ -1712,6 +2095,24 @@ static char *_read_file(const char *fname)
 	return file_buf;
 }
 
+extern int arg_version(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
+	print_slurm_version();
+	if (is_fatal) {
+		exit(0);
+	}
+	return SLURM_SUCCESS;
+}
+
+extern int arg_help(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
+	printf("Help displayed here!\n");
+	return SLURM_SUCCESS;
+}
+
+extern int arg_usage(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
+	printf("Usage displayed here!\n");
+	return SLURM_SUCCESS;
+}
+
 extern int arg_set_accel_bind(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	srun_opt_t *sropt = opt->srun_opt;
 	if (!arg)
@@ -2557,6 +2958,11 @@ extern int arg_set_mail_type(slurm_opt_t *opt, const char *arg, const char *labe
 		return SLURM_ERROR;
 	}
 
+	return SLURM_SUCCESS;
+}
+
+extern int arg_set_pack_group(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
+	/* DMJ NOT IMPLEMENTED */
 	return SLURM_SUCCESS;
 }
 
@@ -3630,12 +4036,6 @@ extern int arg_set_x11(slurm_opt_t *opt, const char *arg, const char *label, boo
 	return SLURM_SUCCESS;
 }
 
-extern char *arg_get_constraint(slurm_opt_t *opt) {
-	if (opt && opt->constraints)
-		return xstrdup(opt->constraints);
-	return NULL;
-}
-
 extern char *arg_get_export(slurm_opt_t *opt) {
 	sbatch_opt_t *sbopt = opt->sbatch_opt;
 	srun_opt_t *sropt = opt->srun_opt;
@@ -3646,8 +4046,709 @@ extern char *arg_get_export(slurm_opt_t *opt) {
 	return NULL;
 }
 
+extern char *arg_get_account(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_acctg_freq(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_bb(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_bbf(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_begin(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_bell(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_chdir(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_cluster(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_cluster_constraint(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_comment(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_constraint(slurm_opt_t *opt) {
+	if (opt && opt->constraints)
+		return xstrdup(opt->constraints);
+	return NULL;
+}
+
+extern char *arg_get_contiguous(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_core_spec(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_cores_per_socket(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_cpu_freq(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_cpus_per_gpu(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_cpus_per_task(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_deadline(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_delay_boot(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_dependency(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_distribution(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_exclude(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_exclusive(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_extra_node_info(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_get_user_env(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_gid(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_gpu_bind(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_gpu_freq(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_gpus(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_gpus_per_node(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_gpus_per_socket(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_gpus_per_task(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
 extern char *arg_get_gres(slurm_opt_t *opt) {
 	if (opt && opt->gres)
 		return xstrdup(opt->gres);
+	return NULL;
+}
+
+extern char *arg_get_gres_flags(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_hint(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_hold(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_immediate(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_jobid(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_job_name(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_kill_command(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_licenses(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_mail_type(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_mail_user(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_mcs_label(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_mem(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_mem_bind(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_mem_per_cpu(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_mem_per_gpu(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_mincores(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_mincpus(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_minsockets(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_minthreads(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_network(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_nice(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_no_bell(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_nodefile(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_nodelist(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_nodes(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_no_kill(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_no_shell(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_ntasks(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_ntasks_per_core(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_ntasks_per_node(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_ntasks_per_socket(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_overcommit(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_oversubscribe(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_partition(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_power(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_priority(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_profile(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_qos(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_quiet(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_reboot(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_reservation(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_share(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_signal(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_sockets_per_node(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_spread_job(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_switches(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_tasks_per_node(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_thread_spec(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_threads(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_threads_per_core(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_time(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_time_min(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_tmp(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_uid(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_unbuffered(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_use_min_nodes(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_verbose(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_wait(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_wait_all_nodes(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_wckey(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_x11(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_array(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_batch(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_workdir(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_checkpoint(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_checkpoint_dir(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_clusters(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_error(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_export_file(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_ignore_pbs(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_input(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_kill_on_invalid_dep(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_no_requeue(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_open_mode(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_output(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_parsable(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_propagate(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_requeue(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_test_only(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_wrap(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_accel_bind(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_bcast(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_compress(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_cpu_bind(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_debugger_test(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_disable_status(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_epilog(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_join(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_kill_on_bad_exit(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_label(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_launch_cmd(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_launcher_opts(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_mpi(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_msg_timeout(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_multi_prog(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_no_allocate(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_pack_group(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_preserve_env(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_prolog(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_pty(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_quit_on_interrupt(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_relative(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_restart_dir(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_resv_ports(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_slurmd_debug(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_task_epilog(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_task_prolog(slurm_opt_t *opt)
+{
+	return NULL;
+}
+
+extern char *arg_get_tres_per_job(slurm_opt_t *opt)
+{
 	return NULL;
 }

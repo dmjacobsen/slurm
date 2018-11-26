@@ -443,4 +443,35 @@ typedef struct slurm_options {
 	uint16_t x11_target_port;	/* target display TCP port on localhost */
 } slurm_opt_t;
 
+struct slurm_long_option {
+	int opt_group;			/* logical grouping of option */
+	char *name;			/* option name */
+	char * (*get_func)(slurm_opt_t *); /* function ptr to get string value */
+	int (*set_func)(slurm_opt_t *, const char *, const char *, bool);
+					/* function ptr to set the value */
+	bool exit_on_error;		/* flag if set fxn should exit on fail */
+	int pass;			/* pass number to process the option */
+	int has_arg;			/* has_arg for getopt_long */
+	int *flag;			/* flag for getopt_long */
+	int opt_val;			/* val for getopt_long */	
+	char *help_short;		/* string for usage/left col of help */
+	char *help_long;		/* detailed help string */
+};
+
+extern struct slurm_long_option *srun_options[];
+extern struct slurm_long_option *salloc_options[];
+extern struct slurm_long_option *sbatch_options[];
+
+#define OPT_GRP_UNKNOWN		0
+#define OPT_GRP_PARRUN		1
+#define OPT_GRP_CONSTRAINT	2
+#define OPT_GRP_CONSRES		3
+#define OPT_GRP_AFFINITY	4
+#define OPT_GRP_GPU		5
+#define OPT_GRP_CRAY		6
+#define OPT_GRP_LIBNRT		7
+#define OPT_GRP_HELP		8
+#define OPT_GRP_OTHER		9
+#define OPT_GRP_LIMIT		10
+
 #endif	/* _SLURM_OPT_H_ */
