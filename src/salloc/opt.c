@@ -401,7 +401,7 @@ static void _opt_args(int argc, char **argv)
 	int i;
 	char **rest = NULL;
 
-	arg_setoptions(&opt, argc, argv);
+	arg_setoptions(&opt, 0, argc, argv);
 
 	if ((optind < argc) && !xstrcmp(argv[optind], ":")) {
 		debug("pack job separator");

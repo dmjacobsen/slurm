@@ -155,7 +155,7 @@ struct slurm_long_option salloc_opts[] = {
 		.name		= "account",
 		.get_func	= &arg_get_account,
 		.set_func	= &arg_set_account,
-		.has_arg	= required_argument, 
+		.has_arg	= required_argument,
 		.opt_val	= 'A'
 	}, {
 		.name		= "extra-node-info",
@@ -416,16 +416,50 @@ extern void option_table_destroy(struct option *opts) {
 	xfree(opts);
 }
 
-extern void arg_setoptions(slurm_opt_t *opt, int argc, char **argv)
+static char *_arg_gen_optstring(struct slurm_long_option **opt_table)
+{
+	char *opt_string = xstrdup("+");
+	char suffix[3];
+	struct slurm_long_option **ptr = NULL;
+
+	for (ptr = opt_table; ptr && *ptr; ptr++) {
+		if ((*ptr)->opt_val > 'z')
+			continue;
+		if (strchr(opt_string, (*ptr)->opt_val))
+			continue;
+		if ((*ptr)->has_arg == required_argument)
+			snprintf(suffix, sizeof(suffix), ":");
+		else if ((*ptr)->has_arg == optional_argument)
+			snprintf(suffix, sizeof(suffix), "::");
+		else
+			suffix[0] = '\0';
+		xstrfmtcat(opt_string, "%c%s", (*ptr)->opt_val, suffix);
+	}
+	return opt_string;
+}
+
+extern int arg_setoptions(slurm_opt_t *opt, int pass, int argc, char **argv)
 {
 	int opt_char, option_index = 0;
-	struct slurm_long_option **optpptr;
-	struct option *long_options = option_table_create(salloc_options, 0);
-	char *opt_string =
-		"+A:B:c:C:d:D:F:G:hHI::J:kK::L:m:M:n:N:Op:P:q:QsS:t:uU:vVw:W:x:";
-	struct option *optz = spank_option_table_create(long_options);
+	struct slurm_long_option **opt_table, **optpptr;
+	struct option *long_options = NULL;
+	char *opt_string = NULL, *arg = NULL;
+	struct option *optz = NULL;
 	bool found;
-	char *arg;
+
+	if (opt->srun_opt)
+		opt_table = srun_options;
+	else if (opt->salloc_opt)
+		opt_table = salloc_options;
+	else if (opt->sbatch_opt)
+		opt_table = sbatch_options;
+	else {
+		error("Unable to identify executable to identify the option table.");
+		exit(1);
+	}
+	long_options = option_table_create(opt_table, pass);
+	opt_string = _arg_gen_optstring(opt_table);
+	optz = spank_option_table_create(long_options);
 
 	if (!optz) {
 		error("Unable to create options table");
@@ -437,7 +471,7 @@ extern void arg_setoptions(slurm_opt_t *opt, int argc, char **argv)
 	while ((opt_char = getopt_long(argc, argv, opt_string,
 				      optz, &option_index)) != -1) {
 		found = false;
-		for (optpptr = salloc_options; optpptr && *optpptr; optpptr++) {
+		for (optpptr = opt_table; optpptr && *optpptr; optpptr++) {
 			struct slurm_long_option *optptr = *optpptr;
 			if (optptr->opt_val != opt_char)
 				continue;
@@ -450,8 +484,8 @@ extern void arg_setoptions(slurm_opt_t *opt, int argc, char **argv)
 			continue;
 		
 		if (opt_char == '?') {
-			fprintf(stderr, "Try \"salloc --help\" for more "
-				"information\n");
+			fprintf(stderr, "Try \"%s --help\" for more "
+				"information\n", opt->progname);
 			exit(1);
 		}
 		if (spank_process_option(opt_char, optarg) < 0)
@@ -460,6 +494,8 @@ extern void arg_setoptions(slurm_opt_t *opt, int argc, char **argv)
 
 	spank_option_table_destroy(optz);
 	option_table_destroy(long_options);
+	xfree(opt_string);
+	return optind;
 }
 
 /* print this version of Slurm */
@@ -2104,7 +2140,52 @@ extern int arg_version(slurm_opt_t *opt, const char *arg, const char *label, boo
 }
 
 extern int arg_help(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
-	printf("Help displayed here!\n");
+	struct slurm_long_option **opt_table = NULL, **ptr = NULL;
+	char short_opt[6];
+	char eqsign[3];
+	char short_help[81];
+	char short_help_term[2];
+	if (opt->srun_opt)
+		opt_table = srun_options;
+	else if (opt->sbatch_opt)
+		opt_table = sbatch_options;
+	else if (opt->salloc_opt)
+		opt_table = salloc_options;
+
+	if (!opt_table) {
+		error("Failed to identify which executable to display help for.");
+		exit(1);
+	}
+
+	for (ptr = opt_table; ptr && *ptr; ptr++) {
+		if ((*ptr)->opt_val < 0x100)
+			snprintf(short_opt, sizeof(short_opt), "  -%c,",
+				 (*ptr)->opt_val);
+		else
+			short_opt[0] = '\0';
+
+		if ((*ptr)->has_arg == required_argument)
+			snprintf(eqsign, sizeof(eqsign), "=");
+		else if ((*ptr)->has_arg == optional_argument)
+			snprintf(eqsign, sizeof(eqsign), "[=");
+		else
+			snprintf(eqsign, sizeof(eqsign), " ");
+
+		if ((*ptr)->help_short)
+			snprintf(short_help, sizeof(short_help), "%s", (*ptr)->help_short);
+		else if ((*ptr)->has_arg != no_argument)
+			snprintf(short_help, sizeof(short_help), "arg");
+		else
+			short_help[0] = '\0';
+
+		if (eqsign[0] == '[')
+			snprintf(short_help_term, sizeof(short_help_term), "]");
+		else
+			short_help_term[0] = '\0';
+
+		printf("%5s --%s%s%s%s\n", short_opt, (*ptr)->name, eqsign, short_help, short_help_term);
+	}
+	exit(0);
 	return SLURM_SUCCESS;
 }
 
@@ -2852,7 +2933,7 @@ extern int arg_set_jobid(slurm_opt_t *opt, const char *arg, const char *label, b
 		return SLURM_SUCCESS;
 	}
 	if (!opt->salloc_opt) {
-		/* DMJ TODO this seems wrong, my guess is that salloc should also 
+		/* DMJ TODO this seems wrong, my guess is that salloc should also
 		   set jobid_set */
 		info("WARNING: Creating SLURM job allocation from within "
 		     "another allocation");
@@ -3234,7 +3315,7 @@ extern int arg_set_no_bell(slurm_opt_t *opt, const char *arg, const char *label,
 
 extern int arg_set_no_kill(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal) {
 	if (arg && (!xstrcasecmp(arg, "off") || !xstrcasecmp(arg, "no"))) {
-		opt.no_kill = false;
+		opt->no_kill = false;
 	} else
 		opt->no_kill = true;
 	return SLURM_SUCCESS;
