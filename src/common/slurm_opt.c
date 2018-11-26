@@ -530,8 +530,9 @@ static struct slurm_long_option opt_common_no_kill = {
 	.get_func  = &arg_get_no_kill,
 	.set_func  = &arg_set_no_kill,
 	.pass      = 1,
-	.has_arg   = no_argument,
+	.has_arg   = optional_argument,
 	.opt_val   = 'k',
+	.help_short = "on|off",
 	.help_long = "do not kill job on node failure",
 };
 
