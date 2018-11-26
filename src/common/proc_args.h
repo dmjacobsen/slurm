@@ -40,10 +40,16 @@
 
 #include <sys/types.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include "src/common/macros.h" /* true and false */
 #include "src/common/env.h"
 #include "src/common/slurm_opt.h"
+
+extern struct option *option_table_create(struct slurm_long_option **, int pass);
+extern void option_table_destroy(struct option *);
+
+extern void arg_setoptions(slurm_opt_t *opt, int argc, char **argv);
 
 /* convert task state ID to equivalent string */
 extern char *format_task_dist_states(task_dist_states_t t);
@@ -194,6 +200,10 @@ extern void xfmt_tres(char **dest, char *prefix, char *src);
  */
 extern void xfmt_tres_freq(char **dest, char *prefix, char *src);
 
+extern int arg_help(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
+extern int arg_usage(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
+extern int arg_version(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
+
 extern int arg_set_accel_bind(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_account(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_acctg_freq(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
@@ -307,6 +317,7 @@ extern int arg_set_open_mode(slurm_opt_t *opt, const char *arg, const char *labe
 extern int arg_set_output(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_overcommit(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_oversubscribe(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
+extern int arg_set_pack_group(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_parsable(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_partition(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_set_pbsmail_type(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
@@ -362,7 +373,150 @@ extern int arg_set_x11(slurm_opt_t *opt, const char *arg, const char *label, boo
 extern int arg_setcomp_req_switch(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 extern int arg_setcomp_req_wait4switch(slurm_opt_t *opt, const char *arg, const char *label, bool is_fatal);
 
-extern char *arg_get_constraint(slurm_opt_t *opt);
 extern char *arg_get_export(slurm_opt_t *opt);
+
+extern char *arg_get_account(slurm_opt_t *opt);
+extern char *arg_get_acctg_freq(slurm_opt_t *opt);
+extern char *arg_get_bb(slurm_opt_t *opt);
+extern char *arg_get_bbf(slurm_opt_t *opt);
+extern char *arg_get_begin(slurm_opt_t *opt);
+extern char *arg_get_bell(slurm_opt_t *opt);
+extern char *arg_get_chdir(slurm_opt_t *opt);
+extern char *arg_get_cluster(slurm_opt_t *opt);
+extern char *arg_get_cluster(slurm_opt_t *opt);
+extern char *arg_get_cluster_constraint(slurm_opt_t *opt);
+extern char *arg_get_comment(slurm_opt_t *opt);
+extern char *arg_get_constraint(slurm_opt_t *opt);
+extern char *arg_get_contiguous(slurm_opt_t *opt);
+extern char *arg_get_core_spec(slurm_opt_t *opt);
+extern char *arg_get_cores_per_socket(slurm_opt_t *opt);
+extern char *arg_get_cpu_freq(slurm_opt_t *opt);
+extern char *arg_get_cpus_per_gpu(slurm_opt_t *opt);
+extern char *arg_get_cpus_per_task(slurm_opt_t *opt);
+extern char *arg_get_deadline(slurm_opt_t *opt);
+extern char *arg_get_delay_boot(slurm_opt_t *opt);
+extern char *arg_get_dependency(slurm_opt_t *opt);
+extern char *arg_get_distribution(slurm_opt_t *opt);
+extern char *arg_get_exclude(slurm_opt_t *opt);
+extern char *arg_get_exclusive(slurm_opt_t *opt);
+extern char *arg_get_extra_node_info(slurm_opt_t *opt);
+extern char *arg_get_get_user_env(slurm_opt_t *opt);
+extern char *arg_get_gid(slurm_opt_t *opt);
+extern char *arg_get_gpu_bind(slurm_opt_t *opt);
+extern char *arg_get_gpu_freq(slurm_opt_t *opt);
+extern char *arg_get_gpus(slurm_opt_t *opt);
+extern char *arg_get_gpus_per_node(slurm_opt_t *opt);
+extern char *arg_get_gpus_per_socket(slurm_opt_t *opt);
+extern char *arg_get_gpus_per_task(slurm_opt_t *opt);
 extern char *arg_get_gres(slurm_opt_t *opt);
+extern char *arg_get_gres_flags(slurm_opt_t *opt);
+extern char *arg_get_hint(slurm_opt_t *opt);
+extern char *arg_get_hold(slurm_opt_t *opt);
+extern char *arg_get_immediate(slurm_opt_t *opt);
+extern char *arg_get_jobid(slurm_opt_t *opt);
+extern char *arg_get_job_name(slurm_opt_t *opt);
+extern char *arg_get_kill_command(slurm_opt_t *opt);
+extern char *arg_get_licenses(slurm_opt_t *opt);
+extern char *arg_get_mail_type(slurm_opt_t *opt);
+extern char *arg_get_mail_user(slurm_opt_t *opt);
+extern char *arg_get_mcs_label(slurm_opt_t *opt);
+extern char *arg_get_mem(slurm_opt_t *opt);
+extern char *arg_get_mem_bind(slurm_opt_t *opt);
+extern char *arg_get_mem_bind(slurm_opt_t *opt);
+extern char *arg_get_mem_per_cpu(slurm_opt_t *opt);
+extern char *arg_get_mem_per_gpu(slurm_opt_t *opt);
+extern char *arg_get_mincores(slurm_opt_t *opt);
+extern char *arg_get_mincpus(slurm_opt_t *opt);
+extern char *arg_get_minsockets(slurm_opt_t *opt);
+extern char *arg_get_minthreads(slurm_opt_t *opt);
+extern char *arg_get_network(slurm_opt_t *opt);
+extern char *arg_get_nice(slurm_opt_t *opt);
+extern char *arg_get_no_bell(slurm_opt_t *opt);
+extern char *arg_get_nodefile(slurm_opt_t *opt);
+extern char *arg_get_nodelist(slurm_opt_t *opt);
+extern char *arg_get_nodes(slurm_opt_t *opt);
+extern char *arg_get_no_kill(slurm_opt_t *opt);
+extern char *arg_get_no_shell(slurm_opt_t *opt);
+extern char *arg_get_ntasks(slurm_opt_t *opt);
+extern char *arg_get_ntasks(slurm_opt_t *opt);
+extern char *arg_get_ntasks_per_core(slurm_opt_t *opt);
+extern char *arg_get_ntasks_per_node(slurm_opt_t *opt);
+extern char *arg_get_ntasks_per_socket(slurm_opt_t *opt);
+extern char *arg_get_overcommit(slurm_opt_t *opt);
+extern char *arg_get_oversubscribe(slurm_opt_t *opt);
+extern char *arg_get_partition(slurm_opt_t *opt);
+extern char *arg_get_power(slurm_opt_t *opt);
+extern char *arg_get_priority(slurm_opt_t *opt);
+extern char *arg_get_profile(slurm_opt_t *opt);
+extern char *arg_get_qos(slurm_opt_t *opt);
+extern char *arg_get_quiet(slurm_opt_t *opt);
+extern char *arg_get_reboot(slurm_opt_t *opt);
+extern char *arg_get_reservation(slurm_opt_t *opt);
+extern char *arg_get_share(slurm_opt_t *opt);
+extern char *arg_get_signal(slurm_opt_t *opt);
+extern char *arg_get_sockets_per_node(slurm_opt_t *opt);
+extern char *arg_get_spread_job(slurm_opt_t *opt);
+extern char *arg_get_switches(slurm_opt_t *opt);
+extern char *arg_get_tasks_per_node(slurm_opt_t *opt);
+extern char *arg_get_thread_spec(slurm_opt_t *opt);
+extern char *arg_get_threads(slurm_opt_t *opt);
+extern char *arg_get_threads_per_core(slurm_opt_t *opt);
+extern char *arg_get_time(slurm_opt_t *opt);
+extern char *arg_get_time_min(slurm_opt_t *opt);
+extern char *arg_get_tmp(slurm_opt_t *opt);
+extern char *arg_get_uid(slurm_opt_t *opt);
+extern char *arg_get_unbuffered(slurm_opt_t *opt);
+extern char *arg_get_use_min_nodes(slurm_opt_t *opt);
+extern char *arg_get_verbose(slurm_opt_t *opt);
+extern char *arg_get_wait(slurm_opt_t *opt);
+extern char *arg_get_wait_all_nodes(slurm_opt_t *opt);
+extern char *arg_get_wckey(slurm_opt_t *opt);
+extern char *arg_get_x11(slurm_opt_t *opt);
+extern char *arg_get_array(slurm_opt_t *opt);
+extern char *arg_get_batch(slurm_opt_t *opt);
+extern char *arg_get_workdir(slurm_opt_t *opt);
+extern char *arg_get_checkpoint(slurm_opt_t *opt);
+extern char *arg_get_checkpoint_dir(slurm_opt_t *opt);
+extern char *arg_get_clusters(slurm_opt_t *opt);
+extern char *arg_get_error(slurm_opt_t *opt);
+extern char *arg_get_export_file(slurm_opt_t *opt);
+extern char *arg_get_ignore_pbs(slurm_opt_t *opt);
+extern char *arg_get_input(slurm_opt_t *opt);
+extern char *arg_get_kill_on_invalid_dep(slurm_opt_t *opt);
+extern char *arg_get_no_requeue(slurm_opt_t *opt);
+extern char *arg_get_open_mode(slurm_opt_t *opt);
+extern char *arg_get_output(slurm_opt_t *opt);
+extern char *arg_get_parsable(slurm_opt_t *opt);
+extern char *arg_get_propagate(slurm_opt_t *opt);
+extern char *arg_get_requeue(slurm_opt_t *opt);
+extern char *arg_get_test_only(slurm_opt_t *opt);
+extern char *arg_get_wrap(slurm_opt_t *opt);
+extern char *arg_get_accel_bind(slurm_opt_t *opt);
+extern char *arg_get_bcast(slurm_opt_t *opt);
+extern char *arg_get_compress(slurm_opt_t *opt);
+extern char *arg_get_cpu_bind(slurm_opt_t *opt);
+extern char *arg_get_debugger_test(slurm_opt_t *opt);
+extern char *arg_get_disable_status(slurm_opt_t *opt);
+extern char *arg_get_epilog(slurm_opt_t *opt);
+extern char *arg_get_join(slurm_opt_t *opt);
+extern char *arg_get_kill_on_bad_exit(slurm_opt_t *opt);
+extern char *arg_get_label(slurm_opt_t *opt);
+extern char *arg_get_launch_cmd(slurm_opt_t *opt);
+extern char *arg_get_launcher_opts(slurm_opt_t *opt);
+extern char *arg_get_mpi(slurm_opt_t *opt);
+extern char *arg_get_msg_timeout(slurm_opt_t *opt);
+extern char *arg_get_multi_prog(slurm_opt_t *opt);
+extern char *arg_get_no_allocate(slurm_opt_t *opt);
+extern char *arg_get_pack_group(slurm_opt_t *opt);
+extern char *arg_get_preserve_env(slurm_opt_t *opt);
+extern char *arg_get_prolog(slurm_opt_t *opt);
+extern char *arg_get_pty(slurm_opt_t *opt);
+extern char *arg_get_quit_on_interrupt(slurm_opt_t *opt);
+extern char *arg_get_relative(slurm_opt_t *opt);
+extern char *arg_get_restart_dir(slurm_opt_t *opt);
+extern char *arg_get_resv_ports(slurm_opt_t *opt);
+extern char *arg_get_slurmd_debug(slurm_opt_t *opt);
+extern char *arg_get_task_epilog(slurm_opt_t *opt);
+extern char *arg_get_task_prolog(slurm_opt_t *opt);
+extern char *arg_get_tres_per_job(slurm_opt_t *opt);
 #endif /* !_PROC_ARGS_H */
