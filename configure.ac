@@ -281,10 +281,6 @@ else
 fi
 AC_SUBST(SLURM_PREFIX)
 
-dnl check for whether to include IBM NRT (Network Resource Table) support
-dnl
-X_AC_NRT
-
 dnl check for netloc library
 dnl
 X_AC_NETLOC
@@ -512,7 +508,6 @@ AC_CONFIG_FILES([Makefile
 		 src/plugins/job_submit/require_timelimit/Makefile
 		 src/plugins/job_submit/throttle/Makefile
 		 src/plugins/launch/Makefile
-		 src/plugins/launch/poe/Makefile
 		 src/plugins/launch/slurm/Makefile
 		 src/plugins/mcs/Makefile
 		 src/plugins/mcs/account/Makefile
@@ -558,8 +553,6 @@ AC_CONFIG_FILES([Makefile
 		 src/plugins/switch/cray/Makefile
 		 src/plugins/switch/generic/Makefile
 		 src/plugins/switch/none/Makefile
-		 src/plugins/switch/nrt/Makefile
-		 src/plugins/switch/nrt/libpermapi/Makefile
 		 src/plugins/mpi/Makefile
 		 src/plugins/mpi/none/Makefile
 		 src/plugins/mpi/openmpi/Makefile

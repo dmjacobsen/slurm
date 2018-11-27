@@ -2375,10 +2375,7 @@ static struct slurm_long_option opt_srun_network = {
 	.has_arg   = required_argument,
 	.opt_val   = LONG_OPT_NETWORK,
 	.help_short = "type",
-#ifdef HAVE_LIBNRT /* IBM PE specific options */
-	.help_long = "communication protocol to be used",
-	.opt_group = OPT_GRP_LIBNRT,
-#elif defined HAVE_NATIVE_CRAY
+#if defined HAVE_NATIVE_CRAY
 	.help_long = "Use network performance counters (system, network, or processor)",
 	.opt_group = OPT_GRP_CRAY,
 #else
