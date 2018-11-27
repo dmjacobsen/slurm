@@ -469,7 +469,6 @@ extern struct slurm_long_option *sbatch_options[];
 #define OPT_GRP_AFFINITY	4
 #define OPT_GRP_GPU		5
 #define OPT_GRP_CRAY		6
-#define OPT_GRP_LIBNRT		7
 #define OPT_GRP_HELP		8
 #define OPT_GRP_OTHER		9
 #define OPT_GRP_LIMIT		10
