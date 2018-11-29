@@ -63,8 +63,15 @@ typedef struct {
 	char *path;
 } gres_device_t;
 
+#define GRES_CONF_OLD_FILE	0x01	/* File= is configured. No independent
+					 * information about Type= option.*/
+#define GRES_CONF_HAS_FILE	0x02	/* File= is configured */
+#define GRES_CONF_HAS_TYPE	0x04	/* Type= is configured */
+
 /* Gres state information gathered by slurmd daemon */
 typedef struct gres_slurmd_conf {
+	uint8_t config_flags;	/* See GRES_CONF_* values above */
+
 	/* Count of gres available in this configuration record */
 	uint64_t count;
 
@@ -75,7 +82,6 @@ typedef struct gres_slurmd_conf {
 
 	/* Device file associated with this configuration record */
 	char *file;
-	uint8_t has_file;	/* non-zero if file is set, flag for RPC */
 
 	/* Comma-separated list of communication link IDs (numbers) */
 	char *links;
@@ -142,7 +148,13 @@ typedef struct gres_node_state {
 	uint32_t *topo_type_id;		/* GRES type (e.g. model ID) */
 	char **topo_type_name;		/* GRES type (e.g. model name) */
 
-	/* GRES type specific information (if gres.conf contains type option) */
+	/*
+	 * GRES type specific information (if gres.conf contains type option)
+	 *
+	 * NOTE: If a job requests GRES without a type specification, these
+	 * type_cnt_alloc will not be incremented. Only the gres_cnt_alloc
+	 * will be incremented.
+	 */
 	uint16_t type_cnt;		/* Size of type_ arrays */
 	uint64_t *type_cnt_alloc;
 	uint64_t *type_cnt_avail;
