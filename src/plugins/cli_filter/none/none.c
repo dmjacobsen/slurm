@@ -88,11 +88,14 @@ const uint32_t plugin_version   = SLURM_VERSION_NUMBER;
 
 
 extern int setup_defaults(slurm_opt_t *opt) {
+	info("setup_defaults()");
 	return SLURM_SUCCESS;
 }
-extern int pre_submit(slurm_opt_t *opt) {
+extern int pre_submit(slurm_opt_t *opt, int offset) {
+	info("pre_submit(): %u", offset);
 	return SLURM_SUCCESS;
 }
 
-extern void post_submit(uint32_t jobid) {
+extern void post_submit(int offset, uint32_t jobid, uint32_t stepid) {
+	info("post_submit(): %u, %u, %u", offset, jobid, stepid);
 }

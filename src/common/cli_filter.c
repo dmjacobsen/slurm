@@ -58,8 +58,8 @@
 
 typedef struct cli_filter_ops {
 	int		(*setup_defaults)(slurm_opt_t *opt);
-	int		(*pre_submit)	 (slurm_opt_t *opt);
-	void		(*post_submit)	 (uint32_t jobid);
+	int		(*pre_submit)	 (slurm_opt_t *opt, int offset);
+	void		(*post_submit)	 (int offset, uint32_t jobid, uint32_t stepid);
 } cli_filter_ops_t;
 
 /*
@@ -219,7 +219,7 @@ extern int cli_filter_plugin_setup_defaults(slurm_opt_t *opt) {
 	return rc;
 }
 
-extern int cli_filter_plugin_pre_submit(slurm_opt_t *opt) {
+extern int cli_filter_plugin_pre_submit(slurm_opt_t *opt, int offset) {
 	DEF_TIMERS;
 	int i, rc;
 
@@ -227,14 +227,14 @@ extern int cli_filter_plugin_pre_submit(slurm_opt_t *opt) {
 	rc = cli_filter_plugin_init();
 	slurm_mutex_lock(&g_context_lock);
 	for (i = 0; ((i < g_context_cnt) && (rc == SLURM_SUCCESS)); i++)
-		rc = (*(ops[i].pre_submit))(opt);
+		rc = (*(ops[i].pre_submit))(opt, offset);
 	slurm_mutex_unlock(&g_context_lock);
 	END_TIMER2("cli_filter_plugin_pre_submit");
 
 	return rc;
 }
 
-extern void cli_filter_plugin_post_submit(uint32_t jobid) {
+extern void cli_filter_plugin_post_submit(int offset, uint32_t jobid, uint32_t stepid) {
 	DEF_TIMERS;
 	int i, rc;
 
@@ -242,7 +242,7 @@ extern void cli_filter_plugin_post_submit(uint32_t jobid) {
 	rc = cli_filter_plugin_init();
 	slurm_mutex_lock(&g_context_lock);
 	for (i = 0; ((i < g_context_cnt) && (rc == SLURM_SUCCESS)); i++)
-		(*(ops[i].post_submit))(jobid);
+		(*(ops[i].post_submit))(offset, jobid, stepid);
 	slurm_mutex_unlock(&g_context_lock);
 	END_TIMER2("cli_filter_plugin_post_submit");
 }

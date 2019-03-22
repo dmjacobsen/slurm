@@ -372,7 +372,7 @@ extern int initialize_and_process_args(int argc, char **argv, int *argc_off)
 		if (argc_off)
 			*argc_off = optind;
 
-		if (cli_filter_plugin_pre_submit(&opt)) {
+		if (cli_filter_plugin_pre_submit(&opt, i)) {
 			error("Policy plugin terminated with error");
 			exit(error_exit);
 		}
