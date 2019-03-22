@@ -130,7 +130,8 @@ libcommon_la_SOURCES = 			\
 	half_duplex.c half_duplex.h	\
 	state_control.c state_control.h	\
 	tres_bind.c tres_bind.h		\
-	tres_frequency.c tres_frequency.h
+	tres_frequency.c tres_frequency.h \
+	cli_filter.c cli_filter.h
 
 EXTRA_libcommon_la_SOURCES = 		\
 	uthash/LICENSE			\

@@ -211,6 +211,7 @@ s_p_options_t slurm_conf_options[] = {
 	{"CheckpointType", S_P_STRING},
 	{"ChosLoc", S_P_STRING},
 	{"CoreSpecPlugin", S_P_STRING},
+	{"CliFilterPlugins", S_P_STRING},
 	{"ClusterName", S_P_STRING},
 	{"CommunicationParameters", S_P_STRING},
 	{"CompleteWait", S_P_UINT16},
@@ -2861,6 +2862,7 @@ free_slurm_conf (slurm_ctl_conf_t *ctl_conf_ptr, bool purge_node_hash)
 	xfree (ctl_conf_ptr->job_credential_public_certificate);
 	FREE_NULL_LIST(ctl_conf_ptr->job_defaults_list);
 	xfree (ctl_conf_ptr->job_submit_plugins);
+	xfree (ctl_conf_ptr->cli_filter_plugins);
 	xfree (ctl_conf_ptr->launch_params);
 	xfree (ctl_conf_ptr->launch_type);
 	xfree (ctl_conf_ptr->layouts);
@@ -3019,6 +3021,7 @@ init_slurm_conf (slurm_ctl_conf_t *ctl_conf_ptr)
 	ctl_conf_ptr->job_file_append		= NO_VAL16;
 	ctl_conf_ptr->job_requeue		= NO_VAL16;
 	xfree(ctl_conf_ptr->job_submit_plugins);
+	xfree(ctl_conf_ptr->cli_filter_plugins);
 	ctl_conf_ptr->keep_alive_time		= NO_VAL16;
 	ctl_conf_ptr->kill_on_bad_exit		= 0;
 	ctl_conf_ptr->kill_wait			= NO_VAL16;
@@ -3869,6 +3872,10 @@ _validate_and_set_defaults(slurm_ctl_conf_t *conf, s_p_hashtbl_t *hashtbl)
 
 	(void) s_p_get_string(&conf->job_submit_plugins, "JobSubmitPlugins",
 			      hashtbl);
+
+	(void) s_p_get_string(&conf->cli_filter_plugins, "CliFilterPlugins",
+			      hashtbl);
+debug("DMJ: CliFilterPlugins: %s", conf->cli_filter_plugins);
 
 	if (!s_p_get_uint16(&conf->get_env_timeout, "GetEnvTimeout", hashtbl))
 		conf->get_env_timeout = DEFAULT_GET_ENV_TIMEOUT;
