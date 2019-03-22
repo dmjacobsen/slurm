@@ -72,6 +72,7 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 #include "src/common/util-net.h"
+#include "src/common/cli_filter.h"
 
 #include "src/api/pmi_server.h"
 
@@ -349,6 +350,12 @@ extern int initialize_and_process_args(int argc, char **argv, int *argc_off)
 
 		/* initialize option defaults */
 		_opt_default();
+		if (pass_number == 1) {
+			if (cli_filter_plugin_setup_defaults(&opt)) {
+				error("Policy plugin terminated with error");
+				exit(error_exit);
+			}
+		}
 		if (opt_found || (i > 0)) {
 			xstrfmtcat(sropt.pack_group, "%d", i);
 			sropt.pack_grp_bits = bit_alloc(MAX_PACK_COUNT);

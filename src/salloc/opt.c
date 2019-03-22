@@ -72,6 +72,7 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 #include "src/common/util-net.h"
+#include "src/common/cli_filter.h"
 #include "src/salloc/salloc.h"
 #include "src/salloc/opt.h"
 
@@ -106,6 +107,14 @@ extern int initialize_and_process_args(int argc, char **argv, int *argc_off)
 {
 	/* initialize option defaults */
 	slurm_reset_all_options(&opt, first_pass);
+
+	/* cli_filter plugins can change the defaults */
+	if (first_pass) {
+		if (cli_filter_plugin_setup_defaults(&opt)) {
+			error("Policy plugin terminated with error");
+			exit(error_exit);
+		}
+	}
 
 	/* initialize options with env vars */
 	_opt_env();
