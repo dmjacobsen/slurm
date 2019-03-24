@@ -57,7 +57,7 @@
 #include "src/common/slurm_opt.h"
 
 typedef struct cli_filter_ops {
-	int		(*setup_defaults)(slurm_opt_t *opt);
+	int		(*setup_defaults)(slurm_opt_t *opt, bool early);
 	int		(*pre_submit)	 (slurm_opt_t *opt, int offset);
 	void		(*post_submit)	 (int offset, uint32_t jobid, uint32_t stepid);
 } cli_filter_ops_t;
@@ -204,7 +204,8 @@ extern int cli_filter_plugin_reconfig(void)
 	return rc;
 }
 
-extern int cli_filter_plugin_setup_defaults(slurm_opt_t *opt) {
+extern int cli_filter_plugin_setup_defaults(slurm_opt_t *opt, bool early)
+{
 	DEF_TIMERS;
 	int i, rc;
 
@@ -212,14 +213,15 @@ extern int cli_filter_plugin_setup_defaults(slurm_opt_t *opt) {
 	rc = cli_filter_plugin_init();
 	slurm_mutex_lock(&g_context_lock);
 	for (i = 0; ((i < g_context_cnt) && (rc == SLURM_SUCCESS)); i++)
-		rc = (*(ops[i].setup_defaults))(opt);
+		rc = (*(ops[i].setup_defaults))(opt, early);
 	slurm_mutex_unlock(&g_context_lock);
 	END_TIMER2("cli_filter_plugin_setup_defaults");
 
 	return rc;
 }
 
-extern int cli_filter_plugin_pre_submit(slurm_opt_t *opt, int offset) {
+extern int cli_filter_plugin_pre_submit(slurm_opt_t *opt, int offset)
+{
 	DEF_TIMERS;
 	int i, rc;
 
@@ -234,7 +236,9 @@ extern int cli_filter_plugin_pre_submit(slurm_opt_t *opt, int offset) {
 	return rc;
 }
 
-extern void cli_filter_plugin_post_submit(int offset, uint32_t jobid, uint32_t stepid) {
+extern void cli_filter_plugin_post_submit(int offset, uint32_t jobid,
+					  uint32_t stepid)
+{
 	DEF_TIMERS;
 	int i, rc;
 

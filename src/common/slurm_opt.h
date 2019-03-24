@@ -440,7 +440,7 @@ extern bool slurm_option_isset(slurm_opt_t *opt, const char *name);
  * Replace option value, discover by common option name
  */
 extern int slurm_option_set(slurm_opt_t *opt, const char *name,
-			    const char *value);
+			    const char *value, bool early);
 
 /*
  * Reset option, discover by common option name

@@ -112,7 +112,7 @@ extern int initialize_and_process_args(int argc, char **argv, int *argc_off,
 
 	/* cli_filter plugins can change the defaults */
 	if (first_pass) {
-		if (cli_filter_plugin_setup_defaults(&opt)) {
+		if (cli_filter_plugin_setup_defaults(&opt, false)) {
 			error("Policy plugin terminated with error");
 			exit(error_exit);
 		}

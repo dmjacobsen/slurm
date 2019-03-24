@@ -76,12 +76,13 @@ extern int cli_filter_plugin_reconfig(void);
  *               cannot change, but OK to mutate some of the values within
  *               the dereferenced memory using the appropriate argset
  *               functions.
+ * IN     early- is the setup_defaults() running in the early pass or not
  * RETURNs     - SLURM_SUCCESS if cli_filter processing should allow the
  *                             CLI to continue execution
  *             - SLURM_ERROR   if any condition is determined that should
  *                             cease processing of the CLI
  */
-extern int cli_filter_plugin_setup_defaults(slurm_opt_t *opt);
+extern int cli_filter_plugin_setup_defaults(slurm_opt_t *opt, bool early);
 
 /*
  * Execute the pre_submit() function in each cli filter plugin.

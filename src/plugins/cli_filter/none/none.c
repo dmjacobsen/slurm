@@ -87,7 +87,7 @@ const uint32_t plugin_version   = SLURM_VERSION_NUMBER;
 \*****************************************************************************/
 
 
-extern int setup_defaults(slurm_opt_t *opt) {
+extern int setup_defaults(slurm_opt_t *opt, bool early) {
 	return SLURM_SUCCESS;
 }
 extern int pre_submit(slurm_opt_t *opt, int offset) {

@@ -3949,9 +3949,12 @@ extern bool slurm_option_set_by_env(int optval)
 
 static int _find_option_idx(const char *name)
 {
-	for (int i = 0; common_options[i]; i++)
+	for (int i = 0; common_options[i]; i++) {
+		if (!common_options[i]->name)
+			continue;
 		if (!strcmp(name, common_options[i]->name))
 			return i;
+	}
 	return -1;
 }
 
@@ -3981,11 +3984,19 @@ extern bool slurm_option_isset(slurm_opt_t *opt, const char *name)
  * Replace option value, discover by common option name
  */
 extern int slurm_option_set(slurm_opt_t *opt, const char *name,
-                             const char *value)
+                             const char *value, bool early)
 {
 	int i = _find_option_idx(name);
 	if (i < 0)
 		return SLURM_ERROR;
+
+	/* don't set early options if it is not early */
+	if (opt->sbatch_opt && common_options[i]->sbatch_early_pass && !early)
+		return SLURM_SUCCESS;
+	if (opt->srun_opt && common_options[i]->srun_early_pass && !early)
+		return SLURM_SUCCESS;
+
+	/* run the appropriate set function */
 	if (common_options[i]->set_func)
 		return common_options[i]->set_func(opt, value);
 	else if (common_options[i]->set_func_salloc && opt->salloc_opt)
@@ -3994,6 +4005,8 @@ extern int slurm_option_set(slurm_opt_t *opt, const char *name,
 		return common_options[i]->set_func_sbatch(opt, value);
 	else if (common_options[i]->set_func_srun && opt->srun_opt)
 		return common_options[i]->set_func_srun(opt, value);
+
+	/* that didn't work out! */
 	return SLURM_ERROR;
 }
 

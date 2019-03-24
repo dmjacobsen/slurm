@@ -350,11 +350,9 @@ extern int initialize_and_process_args(int argc, char **argv, int *argc_off)
 
 		/* initialize option defaults */
 		_opt_default();
-		if (pass_number == 1) {
-			if (cli_filter_plugin_setup_defaults(&opt)) {
-				error("Policy plugin terminated with error");
-				exit(error_exit);
-			}
+		if (cli_filter_plugin_setup_defaults(&opt, pass_number == 1)) {
+			error("Policy plugin terminated with error");
+			exit(error_exit);
 		}
 		if (opt_found || (i > 0)) {
 			xstrfmtcat(sropt.pack_group, "%d", i);
