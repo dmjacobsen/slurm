@@ -4011,7 +4011,6 @@ extern int slurm_option_set(slurm_opt_t *opt, const char *name,
 	if (rc == SLURM_SUCCESS)
 		common_options[i]->set = true;
 
-	/* that didn't work out! */
 	return rc;
 }
 
