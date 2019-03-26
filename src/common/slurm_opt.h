@@ -448,6 +448,20 @@ extern int slurm_option_set(slurm_opt_t *opt, const char *name,
 extern bool slurm_option_reset(slurm_opt_t *opt, const char *name);
 
 /*
+ * Function for iterating through all the common option data structure
+ * and returning (via parameter arguments) the name and value of each
+ * set slurm option.
+ *
+ * opt   IN     - option data structure being interpretted
+ * name  OUT    - pointer to string to store the name, existing contents ignored
+ * value OUT    - pointer to string to store the value,existing contents ignored
+ * state IN/OUT - internal state, should be set to 0 for the first call
+ * RETURNS      - true if name/value set; false if no more options
+ */
+extern bool slurm_option_get_next_set(slurm_opt_t *opt, char **name,
+				      char **value, size_t *state);
+
+/*
  * Pull these back in from the appropriate commands:
  */
 extern void salloc_help(void);

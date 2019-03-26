@@ -3986,6 +3986,7 @@ extern bool slurm_option_isset(slurm_opt_t *opt, const char *name)
 extern int slurm_option_set(slurm_opt_t *opt, const char *name,
                              const char *value, bool early)
 {
+	int rc = SLURM_ERROR;
 	int i = _find_option_idx(name);
 	if (i < 0)
 		return SLURM_ERROR;
@@ -3998,16 +3999,20 @@ extern int slurm_option_set(slurm_opt_t *opt, const char *name,
 
 	/* run the appropriate set function */
 	if (common_options[i]->set_func)
-		return common_options[i]->set_func(opt, value);
+		rc = common_options[i]->set_func(opt, value);
 	else if (common_options[i]->set_func_salloc && opt->salloc_opt)
-		return common_options[i]->set_func_salloc(opt, value);
+		rc = common_options[i]->set_func_salloc(opt, value);
 	else if (common_options[i]->set_func_sbatch && opt->sbatch_opt)
-		return common_options[i]->set_func_sbatch(opt, value);
+		rc = common_options[i]->set_func_sbatch(opt, value);
 	else if (common_options[i]->set_func_srun && opt->srun_opt)
-		return common_options[i]->set_func_srun(opt, value);
+		rc = common_options[i]->set_func_srun(opt, value);
+
+	/* assure that the option shows up as "set" */
+	if (rc == SLURM_SUCCESS)
+		common_options[i]->set = true;
 
 	/* that didn't work out! */
-	return SLURM_ERROR;
+	return rc;
 }
 
 /*
@@ -4020,4 +4025,34 @@ extern bool slurm_option_reset(slurm_opt_t *opt, const char *name)
 		return false;
 	common_options[i]->reset_func(opt);
 	return true;
+}
+
+/*
+ * Function for iterating through all the common option data structure
+ * and returning (via parameter arguments) the name and value of each
+ * set slurm option.
+ *
+ * opt   IN     - option data structure being interpretted
+ * name  OUT    - pointer to string to store the name, existing contents ignored
+ * value OUT    - pointer to string to store the value,existing contents ignored
+ * state IN/OUT - internal state, should be set to 0 for the first call
+ * RETURNS      - true if name/value set; false if no more options
+ */
+extern bool slurm_option_get_next_set(slurm_opt_t *opt, char **name,
+				      char **value, size_t *state)
+{
+	size_t limit = sizeof(common_options) / sizeof(slurm_cli_opt_t *);
+	if (*state > limit)
+		return false;
+
+	while (common_options[*state] && *state < limit && !common_options[*state]->set)
+		(*state)++;
+
+	if (*state < limit && common_options[*state]) {
+		*name = xstrdup(common_options[*state]->name);
+		*value = common_options[*state]->get_func(opt);
+		(*state)++;
+		return true;
+	}
+	return false;
 }
