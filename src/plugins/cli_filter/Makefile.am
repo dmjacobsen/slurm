@@ -4,4 +4,5 @@ SUBDIRS = \
 	common \
 	lua \
 	none \
+	syslog \
 	user_defaults
