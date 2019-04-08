@@ -171,11 +171,6 @@ int main(int argc, char **argv)
 			free_buf(buf);
 		}
 
-		if (spank_init_post_opt() < 0) {
-			error("Plugin stack post-option processing failed");
-			exit(error_exit);
-		}
-
 		if (opt.get_user_env_time < 0) {
 			/* Moab doesn't propagate the user's resource limits, so
 			 * slurmd determines the values at the same time that it

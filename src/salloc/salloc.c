@@ -220,11 +220,6 @@ int main(int argc, char **argv)
 			log_alter(logopt, 0, NULL);
 		}
 
-		if (spank_init_post_opt() < 0) {
-			error("Plugin stack post-option processing failed");
-			exit(error_exit);
-		}
-
 		_set_spank_env();
 		if (pack_inx == 0)
 			_set_submit_dir_env();

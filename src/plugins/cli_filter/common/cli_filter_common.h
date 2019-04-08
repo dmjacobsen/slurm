@@ -43,7 +43,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/types.h>
-#include <src/common/slurm_opt.h>
+#include "src/common/slurm_opt.h"
 
 char *cli_filter_json_set_options(slurm_opt_t *options);
 char *cli_filter_json_env(void);

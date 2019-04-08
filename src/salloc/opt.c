@@ -290,6 +290,11 @@ static void _opt_args(int argc, char **argv, int pack_offset)
 		command_argv[i] = NULL;	/* End of argv's (for possible execv) */
 	}
 
+	if (spank_init_post_opt() < 0) {
+		error("Plugin stack post-option processing failed");
+		exit(error_exit);
+	}
+
 	if (cli_filter_plugin_pre_submit(&opt, pack_offset)) {
 		error("Policy plugin terminated with error");
 		exit(error_exit);

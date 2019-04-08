@@ -41,6 +41,7 @@
 #include <pwd.h>
 #include "cli_filter_common.h"
 #include "src/common/cli_filter.h"
+#include "src/common/plugstack.h"
 #include "src/common/xstring.h"
 #include "src/common/xmalloc.h"
 
@@ -115,6 +116,7 @@ char *cli_filter_json_set_options(slurm_opt_t *options)
 {
 	char *name = NULL;
 	char *value = NULL;
+	char **ptr = NULL;
 	size_t st = 0;
 	size_t len = 0;
 	char *json = xmalloc(2048);
@@ -130,8 +132,32 @@ char *cli_filter_json_set_options(slurm_opt_t *options)
 		xfree(name);
 		xfree(value);
 	}
-	len = strlen(json);
+	len = strlen(SPANK_OPTION_ENV_PREFIX);
+	for (ptr = environ; ptr && *ptr; ptr++) {
+		if (strncmp(*ptr, SPANK_OPTION_ENV_PREFIX, len) == 0) {
+			if ((*ptr)[len] == '\0')
+				continue;
+			char *key = xstrdup_printf("spank:%s", *ptr + len);
+			char *value = strchr(key, '_');
+			if (value)
+				*value = ':';
+			value = strchr(key, '=');
+			if (!value) {
+				xfree(key);
+				continue;
+			}
+			*value++ = '\0';
 
+			char *key_esc = _json_escape(key);
+			char *value_esc = _json_escape(value);
+			xstrfmtcat(json, "\"%s\":\"%s\",", key_esc, value_esc);
+			xfree(key);
+			xfree(key_esc);
+			xfree(value_esc);
+		}
+	}
+
+	len = strlen(json);
 	if (len > 1)
 		json[len - 1] = '}';
 	else
@@ -145,18 +171,21 @@ char *cli_filter_json_env(void)
 	char *json = xmalloc(4096);
 	size_t len = 0;
 	xstrcat(json, "{");
+	len = strlen(SPANK_OPTION_ENV_PREFIX);
 	for (ptr = environ; ptr && *ptr; ptr++) {
 		if (!strncmp(*ptr, "SLURM_", 6))
 			continue;
 		if (!strncmp(*ptr, "SPANK_", 6))
 			continue;
+		if (!strncmp(*ptr, SPANK_OPTION_ENV_PREFIX, len))
+			continue;
 
 		char *key = xstrdup(*ptr);
 		char *value = strchr(key, '=');
+		*value++ = '\0';
 		char *key_esc = _json_escape(key);
 		char *value_esc = _json_escape(value);
-		*value++ = '\0';
-		xstrfmtcat(json, "\"%s\":\"%s\",", key, value);
+		xstrfmtcat(json, "\"%s\":\"%s\",", key_esc, value_esc);
 		xfree(key);
 		xfree(key_esc);
 		xfree(value_esc);
