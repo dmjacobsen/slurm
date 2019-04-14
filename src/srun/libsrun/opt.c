@@ -352,6 +352,9 @@ extern int initialize_and_process_args(int argc, char **argv, int *argc_off)
 		_opt_default();
 		if (!getenv("SLURM_JOB_ID")) {
 			/* do not set adjust defaults in an active allocation */
+			/* TODO: a better way to determine if an allocation is
+			 *       desired this early in srun setup (i.e., process
+			 *       just the jobid argument and env) */
 			if (cli_filter_plugin_setup_defaults(&opt,
 							     pass_number == 1))
 			{
