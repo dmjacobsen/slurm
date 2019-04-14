@@ -51,9 +51,10 @@
 #include "slurm/slurm_errno.h"
 #include "src/common/slurm_xlator.h"
 #include "src/common/cli_filter.h"
-#include "src/plugins/cli_filter/common/cli_filter_common.h"
+#include "src/common/plugstack.h"
 #include "src/common/slurm_opt.h"
 #include "src/common/xlua.h"
+#include "src/plugins/cli_filter/common/cli_filter_common.h"
 
 /*
  * These variables are required by the generic plugin interface.  If they
@@ -159,7 +160,7 @@ static int _setup_stringarray(lua_State *L, int limit, char **data) {
 	return 1;
 }
 
-static int _get_option_field_argv(lua_State *L, slurm_opt_t *opt)
+static int _setup_option_field_argv(lua_State *L, slurm_opt_t *opt)
 {
 	char **argv = NULL;
 	int  argc = 0;
@@ -173,6 +174,41 @@ static int _get_option_field_argv(lua_State *L, slurm_opt_t *opt)
 	}
 
 	return _setup_stringarray(L, argc, argv);
+}
+
+static int _setup_option_field_spank(lua_State *L)
+{
+	char **plugins = NULL;
+	size_t n_plugins = 0;
+
+	n_plugins = spank_get_plugin_names(&plugins);
+
+	lua_newtable(L); /* table to push */
+	for (size_t i = 0; i < n_plugins; i++) {
+		char **opts = NULL;
+		size_t n_opts = 0;
+		n_opts = spank_get_plugin_option_names(plugins[i], &opts);
+
+		lua_newtable(L);
+		for (size_t j = 0; j < n_opts; j++) {
+			char *value = spank_option_get(opts[j]);
+			if (value)
+				if (strlen(value) == 0)
+					lua_pushstring(L, "set");
+				else
+					lua_pushstring(L, value);
+			else
+				lua_pushnil(L);
+			lua_setfield(L, -2, opts[j]);
+			xfree(opts[j]);
+		}
+		lua_setfield(L, -2, plugins[i]);
+
+		xfree(opts);
+		xfree(plugins[i]);
+	}
+	xfree(plugins);
+	return 1;
 }
 
 static int _get_option_field_index(lua_State *L)
@@ -191,10 +227,11 @@ static int _get_option_field_index(lua_State *L)
 	 * the stack */
 	lua_settop(L, -3);
 
-	/* specially handle "argv" and "spank_job_env" */
-	if (strcmp(name, "argv") == 0)
-		return _get_option_field_argv(L, options);
-	else if (strcmp(name, "spank_job_env") == 0)
+	if (!strcmp(name, "argv"))
+		return _setup_option_field_argv(L, options);
+	else if (!strcmp(name, "spank"))
+		return _setup_option_field_spank(L);
+	else if (!strcmp(name, "spank_job_env"))
 		return _setup_stringarray(L, options->spank_job_env_size,
 					  options->spank_job_env);
 
@@ -245,11 +282,14 @@ static void _push_options(slurm_opt_t *opt, bool early)
 	/* Store opt in the metatable, so the index
 	 * function knows which struct it's getting data for.
 	 */
+
 	lua_pushlightuserdata(L, opt);
 	lua_setfield(L, -2, "_opt");
 	lua_pushboolean(L, early);
 	lua_setfield(L, -2, "_early");
+
 	lua_setmetatable(L, -2);
+
 }
 
 static int _log_lua_error(lua_State *L)
@@ -669,7 +709,7 @@ extern int pre_submit(slurm_opt_t *opt, int pack_offset)
 	_push_options(opt, false);
 	lua_pushnumber(L, (double) pack_offset);
 
-	_stack_dump("cli_filter, before lua_pcall", L);
+	_stack_dump("cli_filter, before lua_pcall pre_submit", L);
 	if (lua_pcall (L, 2, 1, 0) != 0) {
 		error("%s/lua: %s: %s",
 		      __func__, lua_script_path, lua_tostring (L, -1));

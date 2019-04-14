@@ -114,12 +114,13 @@ static char *_json_escape(const char *str)
 
 char *cli_filter_json_set_options(slurm_opt_t *options)
 {
+	char *json = xmalloc(2048);
 	char *name = NULL;
 	char *value = NULL;
-	char **ptr = NULL;
-	size_t st = 0;
+	char *plugin = NULL;
 	size_t len = 0;
-	char *json = xmalloc(2048);
+	size_t st = 0;
+	void *spst = NULL;
 	xstrcat(json, "{");
 
 	st = 0;
@@ -132,29 +133,17 @@ char *cli_filter_json_set_options(slurm_opt_t *options)
 		xfree(name);
 		xfree(value);
 	}
-	len = strlen(SPANK_OPTION_ENV_PREFIX);
-	for (ptr = environ; ptr && *ptr; ptr++) {
-		if (strncmp(*ptr, SPANK_OPTION_ENV_PREFIX, len) == 0) {
-			if ((*ptr)[len] == '\0')
-				continue;
-			char *key = xstrdup_printf("spank:%s", *ptr + len);
-			char *value = strchr(key, '_');
-			if (value)
-				*value = ':';
-			value = strchr(key, '=');
-			if (!value) {
-				xfree(key);
-				continue;
-			}
-			*value++ = '\0';
 
-			char *key_esc = _json_escape(key);
-			char *value_esc = _json_escape(value);
-			xstrfmtcat(json, "\"%s\":\"%s\",", key_esc, value_esc);
-			xfree(key);
-			xfree(key_esc);
-			xfree(value_esc);
-		}
+	while (spank_option_get_next_set(&plugin, &name, &value, &spst)) {
+		char *tmp = xstrdup_printf("\"spank:%s:%s\":\"%s\",",
+					   plugin, name, value);
+		char *esc = _json_escape(tmp);
+		xstrcat(json, esc);
+		xfree(tmp);
+		xfree(esc);
+		xfree(plugin);
+		xfree(name);
+		xfree(value);
 	}
 
 	len = strlen(json);
