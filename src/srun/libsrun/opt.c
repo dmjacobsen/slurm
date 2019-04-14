@@ -350,9 +350,14 @@ extern int initialize_and_process_args(int argc, char **argv, int *argc_off)
 
 		/* initialize option defaults */
 		_opt_default();
-		if (cli_filter_plugin_setup_defaults(&opt, pass_number == 1)) {
-			error("Policy plugin terminated with error");
-			exit(error_exit);
+		if (!getenv("SLURM_JOB_ID")) {
+			/* do not set adjust defaults in an active allocation */
+			if (cli_filter_plugin_setup_defaults(&opt,
+							     pass_number == 1))
+			{
+				error("Policy plugin terminated with error");
+				exit(error_exit);
+			}
 		}
 		if (opt_found || (i > 0)) {
 			xstrfmtcat(sropt.pack_group, "%d", i);
@@ -370,11 +375,6 @@ extern int initialize_and_process_args(int argc, char **argv, int *argc_off)
 		if (argc_off)
 			*argc_off = optind;
 
-		if (spank_init_post_opt() < 0) {
-			error("Plugin stack post-option processing failed.");
-			exit(error_exit);
-		}
-
 		if (cli_filter_plugin_pre_submit(&opt, i)) {
 			error("Policy plugin terminated with error");
 			exit(error_exit);
@@ -386,6 +386,10 @@ extern int initialize_and_process_args(int argc, char **argv, int *argc_off)
 		if (opt.verbose)
 			slurm_print_set_options(&opt);
 
+		if (spank_init_post_opt() < 0) {
+			error("Plugin stack post-option processing failed.");
+			exit(error_exit);
+		}
 		pending_append = true;
 	}
 	bit_free(pack_grp_bits);

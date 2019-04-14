@@ -100,10 +100,11 @@ static void  _set_options(int argc, char **argv);
  * 3. update options with commandline args
  * 4. perform some verification that options are reasonable
  *
- * pack_inx  IN - offset of job pack
  * argc      IN - Count of elements in argv
  * argv      IN - Array of elements to parse
- * argc_off OUT - Offset of first non-parsable element  */
+ * argc_off OUT - Offset of first non-parsable element
+ * pack_inx  IN - offset of job pack
+ */
 extern int initialize_and_process_args(int argc, char **argv, int *argc_off,
 				       int pack_inx)
 {
@@ -288,11 +289,6 @@ static void _opt_args(int argc, char **argv, int pack_offset)
 			command_argv[i] = xstrdup(rest[i]);
 		}
 		command_argv[i] = NULL;	/* End of argv's (for possible execv) */
-	}
-
-	if (spank_init_post_opt() < 0) {
-		error("Plugin stack post-option processing failed");
-		exit(error_exit);
 	}
 
 	if (cli_filter_plugin_pre_submit(&opt, pack_offset)) {

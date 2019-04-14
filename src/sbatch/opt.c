@@ -379,11 +379,6 @@ extern void process_options_second_pass(int argc, char **argv, int *argc_off,
 	/* set options from command line */
 	*argc_off = _set_options(argc, argv);
 
-	if (spank_init_post_opt() < 0) {
-		error("Plugin stack post-option processing failed");
-		exit(error_exit);
-	}
-
 	if (cli_filter_plugin_pre_submit(&opt, pack_inx)) {
 		error("Policy plugin terminated with error");
 		exit(error_exit);
