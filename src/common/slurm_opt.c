@@ -4044,7 +4044,8 @@ extern bool slurm_option_get_next_set(slurm_opt_t *opt, char **name,
 	if (*state > limit)
 		return false;
 
-	while (common_options[*state] && *state < limit && !common_options[*state]->set)
+	while (common_options[*state] && *state < limit &&
+	       (!common_options[*state]->set || !common_options[*state]->name))
 		(*state)++;
 
 	if (*state < limit && common_options[*state]) {
