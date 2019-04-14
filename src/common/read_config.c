@@ -3875,7 +3875,6 @@ _validate_and_set_defaults(slurm_ctl_conf_t *conf, s_p_hashtbl_t *hashtbl)
 
 	(void) s_p_get_string(&conf->cli_filter_plugins, "CliFilterPlugins",
 			      hashtbl);
-debug("DMJ: CliFilterPlugins: %s", conf->cli_filter_plugins);
 
 	if (!s_p_get_uint16(&conf->get_env_timeout, "GetEnvTimeout", hashtbl))
 		conf->get_env_timeout = DEFAULT_GET_ENV_TIMEOUT;

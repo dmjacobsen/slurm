@@ -40,6 +40,7 @@
 #include <grp.h>
 #include <pwd.h>
 #include "cli_filter_common.h"
+
 #include "src/common/cli_filter.h"
 #include "src/common/plugstack.h"
 #include "src/common/xstring.h"
