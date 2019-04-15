@@ -115,6 +115,8 @@ static char *_json_escape(const char *str)
 
 char *cli_filter_json_set_options(slurm_opt_t *options)
 {
+	int  argc = 0;
+	char **argv = NULL;
 	char *json = xmalloc(2048);
 	char *name = NULL;
 	char *value = NULL;
@@ -122,8 +124,8 @@ char *cli_filter_json_set_options(slurm_opt_t *options)
 	size_t len = 0;
 	size_t st = 0;
 	void *spst = NULL;
-	xstrcat(json, "{");
 
+	xstrcat(json, "{");
 	st = 0;
 	while (slurm_option_get_next_set(options, &name, &value, &st)) {
 		char *lname = _json_escape(name);
@@ -147,11 +149,24 @@ char *cli_filter_json_set_options(slurm_opt_t *options)
 		xfree(value);
 	}
 
+	if (options->sbatch_opt) {
+		argv = options->sbatch_opt->script_argv;
+		argc = options->sbatch_opt->script_argc;
+	} else if (options->srun_opt) {
+		argv = options->srun_opt->argv;
+		argc = options->srun_opt->argc;
+	}
+
+	xstrcat(json, "\"argv\": [");
+	for (char **ptr = argv; ptr && *ptr && ptr - argv < argc; ptr++) {
+		char *esc = _json_escape(*ptr);
+		xstrfmtcat(json, "\"%s\",", esc);
+		xfree(esc);
+	}
 	len = strlen(json);
-	if (len > 1)
-		json[len - 1] = '}';
-	else
-		xfree(json);
+	if (json[len - 1] == ',')
+		json[len - 1] = '\0';
+	xstrcat(json, "]}");
 	return json;
 }
 
